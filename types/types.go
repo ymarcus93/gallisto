@@ -2,7 +2,6 @@ package types
 
 import (
 	"crypto/rsa"
-	"math/big"
 )
 
 const OPRF_CIPHERSUITE string = "OPRF-P521-HKDF-SHA512-SSWU-RO"
@@ -28,16 +27,21 @@ type AssignmentData struct {
 	IndustryOfPerpetrator            string
 }
 
-type LOCData struct {
-	U                     *big.Int
-	S                     *big.Int
-	EncryptedEntryDataKey GCMCiphertext // c_e
-}
+type LOCType int
 
-type DLOCData struct {
-	U                          *big.Int
-	S                          *big.Int
-	EncryptedAssignmentDataKey GCMCiphertext // c_a
+const (
+	Director LOCType = iota
+	Counselor
+)
+
+type LOCData struct {
+	Type LOCType
+	U    []byte
+	S    []byte
+
+	// Either c_e or c_a depending on Type. If Director, then c_a. If Counselor,
+	// then c_e
+	EncryptedKey GCMCiphertext
 }
 
 type CallistoTuple struct {

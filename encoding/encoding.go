@@ -58,7 +58,7 @@ func EncodeLOCData(locData types.LOCData) ([]byte, error) {
 	// Create msgpack encoding of LOC data
 	locDataEncodedBytes, err := msgpack.Marshal(&locData)
 	if err != nil {
-		return nil, fmt.Errorf("failed to encode LOC data: %v", err)
+		return nil, fmt.Errorf("failed to encode %v LOC data: %v", locData.Type, err)
 	}
 
 	return locDataEncodedBytes, nil
@@ -70,31 +70,8 @@ func DecodeLOCData(encodedLOCData []byte) (types.LOCData, error) {
 	var decodedLOCData types.LOCData
 	err := msgpack.Unmarshal(encodedLOCData, &decodedLOCData)
 	if err != nil {
-		return types.LOCData{}, fmt.Errorf("failed to decode LOC data: %v", err)
+		return types.LOCData{}, fmt.Errorf("failed to decode (D)LOC data: %v", err)
 	}
 
 	return decodedLOCData, nil
-}
-
-// EncodeDLOCData returns a msgpack encoding of DLOC data
-func EncodeDLOCData(dlocData types.DLOCData) ([]byte, error) {
-	// Create msgpack encoding of LOC data
-	dlocDataEncodedBytes, err := msgpack.Marshal(&dlocData)
-	if err != nil {
-		return nil, fmt.Errorf("failed to encode DLOC data: %v", err)
-	}
-
-	return dlocDataEncodedBytes, nil
-}
-
-// DecodeDLOCData decodes msgpack encoding of DLOC data
-func DecodeDLOCData(encodedDLOCData []byte) (types.DLOCData, error) {
-	// Decode msgpack encoding of LOC data
-	var decodedDLOCData types.DLOCData
-	err := msgpack.Unmarshal(encodedDLOCData, &decodedDLOCData)
-	if err != nil {
-		return types.DLOCData{}, fmt.Errorf("failed to decode DLOC data: %v", err)
-	}
-
-	return decodedDLOCData, nil
 }

@@ -78,18 +78,20 @@ func (c *CallistoClient) CreateCallistoTuple(perpID []byte, entry types.Callisto
 	shamirShare := shamir.ComputeShamirShare(akpiValues.a, akpiValues.k, c.UserID)
 
 	// Encrypt Callisto entry data
-	encryptedCallistoEntryData, err := encryptEntry(entry, akpiValues)
+	encryptedCallistoEntryData, err := c.encryptEntry(entry, akpiValues)
 	if err != nil {
 		return types.CallistoTuple{}, err
 	}
 
 	// Encrypt data for LOCs
 	locCiphertext, err := encryptLOCData(
+		types.Counselor,
 		shamirShare,
 		encryptedCallistoEntryData.encryptedEntryDataKeyByK,
 		pubKeys.LOCPublicKey,
 	)
-	dlocCiphertext, err := encryptDLOCData(
+	dlocCiphertext, err := encryptLOCData(
+		types.Director,
 		shamirShare,
 		encryptedCallistoEntryData.encryptedAssignmentDataKeyByK,
 		pubKeys.DLOCPublicKey,
@@ -116,7 +118,7 @@ type encryptedCallistoEntry struct {
 
 // encryptEntry performs client-side symmetric encryption operations involved in
 // encrypting an entry
-func encryptEntry(entry types.CallistoEntry, akpiValues akpi) (encryptedCallistoEntry, error) {
+func (c *CallistoClient) encryptEntry(entry types.CallistoEntry, akpiValues akpi) (encryptedCallistoEntry, error) {
 	// Encrypt entry data: eEntry
 	encryptedEntryData, entryDataKey, err := encryptEntryData(entry.EntryData, akpiValues.pi)
 	if err != nil {
@@ -130,7 +132,7 @@ func encryptEntry(entry types.CallistoEntry, akpiValues akpi) (encryptedCallisto
 	}
 
 	// c_u
-	encryptedEntryDataKeyByU, err := encryption.EncryptAES(akpiValues.k, entryDataKey, akpiValues.pi)
+	encryptedEntryDataKeyByU, err := encryption.EncryptAES(c.userKey, entryDataKey, akpiValues.pi)
 	if err != nil {
 		return encryptedCallistoEntry{}, fmt.Errorf("failed to create c_u: %v", err)
 	}
@@ -206,13 +208,14 @@ func encryptAssignmentData(data types.AssignmentData, pi []byte) (types.GCMCiphe
 	return encryptedAssignmentData, assignmentDataKey, nil
 }
 
-// encryptLOCData forms the c tuple and encrypts the necessary data for a LOC
-func encryptLOCData(shamirShare *ss.Share, encryptedEntryDataKey types.GCMCiphertext, locPublicKey *rsa.PublicKey) ([]byte, error) {
-	// c tuple
+// encryptLOCData forms the c or c_assign tuple (depending on locType) and
+// encrypts the necessary data for a LOC
+func encryptLOCData(locType types.LOCType, shamirShare *ss.Share, encryptedKey types.GCMCiphertext, locPublicKey *rsa.PublicKey) ([]byte, error) {
 	locData := types.LOCData{
-		U:                     shamirShare.X.AsBig(),
-		S:                     shamirShare.X.AsBig(),
-		EncryptedEntryDataKey: encryptedEntryDataKey,
+		Type:         locType,
+		U:            shamirShare.X.Bytes(),
+		S:            shamirShare.Y.Bytes(),
+		EncryptedKey: encryptedKey,
 	}
 
 	// Create msgpack encoding of LOC data
@@ -224,35 +227,10 @@ func encryptLOCData(shamirShare *ss.Share, encryptedEntryDataKey types.GCMCipher
 	// Encrypt data to LOC
 	locCiphertext, err := encryption.EncryptRSA(locDataEncodedBytes, locPublicKey)
 	if err != nil {
-		return nil, fmt.Errorf("failed to encrypt locData to LOC: %v", err)
+		return nil, fmt.Errorf("failed to encrypt locData to %v LOC: %v", locType, err)
 	}
 
 	return locCiphertext, nil
-}
-
-// encryptDLOCData forms the c_assign tuple and encrypts the necessary data for
-// a DLOC
-func encryptDLOCData(shamirShare *ss.Share, encryptedAssignmentDataKey types.GCMCiphertext, dlocPublicKey *rsa.PublicKey) ([]byte, error) {
-	// c_assign tuple
-	dlocData := types.DLOCData{
-		U:                          shamirShare.X.AsBig(),
-		S:                          shamirShare.X.AsBig(),
-		EncryptedAssignmentDataKey: encryptedAssignmentDataKey,
-	}
-
-	// Create msgpack encoding of DLOC data
-	dlocDataEncodedBytes, err := encoding.EncodeDLOCData(dlocData)
-	if err != nil {
-		return nil, err
-	}
-
-	// Encrypt data to DLOC
-	dlocCiphertext, err := encryption.EncryptRSA(dlocDataEncodedBytes, dlocPublicKey)
-	if err != nil {
-		return nil, fmt.Errorf("failed to encrypt dlocData to DLOC: %v", err)
-	}
-
-	return dlocCiphertext, nil
 }
 
 // getPHatValue asks an OPRF evaluator to transform a low-entropy perpetrator ID
