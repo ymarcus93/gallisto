@@ -1,6 +1,7 @@
 package types
 
 import (
+	"crypto/rsa"
 	"math/big"
 )
 
@@ -30,13 +31,13 @@ type AssignmentData struct {
 type LOCData struct {
 	U                     *big.Int
 	S                     *big.Int
-	EncryptedEntryDataKey GCMCiphertext
+	EncryptedEntryDataKey GCMCiphertext // c_e
 }
 
 type DLOCData struct {
 	U                          *big.Int
 	S                          *big.Int
-	EncryptedAssignmentDataKey GCMCiphertext
+	EncryptedAssignmentDataKey GCMCiphertext // c_a
 }
 
 type CallistoTuple struct {
@@ -46,4 +47,14 @@ type CallistoTuple struct {
 	EncryptedEntryDataKeyUnderUserKey GCMCiphertext
 	EncryptedEntryData                GCMCiphertext
 	EncryptedAssignmentData           GCMCiphertext
+}
+
+type LOCPublicKeys struct {
+	LOCPublicKey  *rsa.PublicKey
+	DLOCPublicKey *rsa.PublicKey
+}
+
+type CallistoEntry struct {
+	EntryData      EntryData
+	AssignmentData AssignmentData
 }

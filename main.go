@@ -38,13 +38,12 @@ func main() {
 		panic(err)
 	}
 
-	locPubKeys := callisto.LOCPublicKeys{
+	locPubKeys := types.LOCPublicKeys{
 		LOCPublicKey:  locKeys.PublicKey,
 		DLOCPublicKey: dlocKeys.PublicKey,
 	}
 
-	entry := callisto.CallistoEntry{
-		PerpID: []byte("perpID"),
+	entry := types.CallistoEntry{
 		EntryData: types.EntryData{
 			PerpetratorName:            "Foo",
 			PerpetratorTwitterUserName: "@foo",
@@ -59,7 +58,8 @@ func main() {
 		},
 	}
 
-	tuple, err := callistoClient.CreateCallistoTuple(entry, locPubKeys, oprfServer)
+	perpID := []byte("perpID")
+	tuple, err := callistoClient.CreateCallistoTuple(perpID, entry, locPubKeys, oprfServer)
 	if err != nil {
 		panic(err)
 	}
