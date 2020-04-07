@@ -1,0 +1,193 @@
+package callisto
+
+import (
+	"crypto/rsa"
+	"fmt"
+
+	ss "github.com/superarius/shamir"
+	ff "github.com/superarius/shamir/modular"
+
+	"github.com/vmihailenco/msgpack"
+
+	"github.com/ymarcus93/gallisto/encoding"
+	"github.com/ymarcus93/gallisto/encryption"
+	"github.com/ymarcus93/gallisto/shamir"
+	"github.com/ymarcus93/gallisto/types"
+)
+
+// DecryptAssignmentData decrypts a list of encrypted assignment data. It does
+// this by finding a common k value amongst matched dlocData and attempting to
+// decrypt encrypted assignment keys with this k. It then uses the decrypted
+// assignment keys to decrypt all assignment data.
+func DecryptAssignmentData(dlocCiphertexts [][]byte, encryptedAssignmentData []types.GCMCiphertext, dlocPrivateKey *rsa.PrivateKey) ([]types.AssignmentData, error) {
+	if len(dlocCiphertexts) != len(encryptedAssignmentData) {
+		return nil, fmt.Errorf("mismatch length between dlocCiphertexts and encrypted assignment data")
+	}
+
+	// Decrypt dloc ciphertexts
+	dlocData, err := decryptLOCCiphertexts(dlocCiphertexts, dlocPrivateKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decrypt DLOC ciphertexts: %v", err)
+	}
+
+	// Validate
+	if !validateLOCData(dlocData, types.Director) {
+		return nil, fmt.Errorf("decrypted DLOC ciphertexts but found non-Director data")
+	}
+
+	// Find k
+	kAsBytes, err := findKValueFromLOCData(dlocData)
+	if err != nil {
+		return nil, fmt.Errorf("failed to find k value from DLOC ciphertexts: %v", err)
+	}
+
+	// Decrypt assignment data
+	assignmentDatas := make([]types.AssignmentData, len(dlocData))
+	for i, d := range dlocData {
+		k_a, err := encryption.DecryptAES(kAsBytes, d.EncryptedKey)
+		if err != nil {
+			return nil, fmt.Errorf("failed to decrypt EncryptedAssignmentDataKey at index %v: %v", i, err)
+		}
+		assignData, err := symDecryptAssignmentData(encryptedAssignmentData[i], k_a)
+		if err != nil {
+			return nil, fmt.Errorf("failed to decrypt assignment data at index %v: %v", i, err)
+		}
+		assignmentDatas[i] = assignData
+	}
+
+	return assignmentDatas, nil
+}
+
+// DecryptEntryData decrypts a list of encrypted entry data. It does this by
+// finding a common k value amongst matched locData and attempting to decrypt
+// encrypted entry keys with this k. It then uses the decrypted entry keys to
+// decrypt all entry data.
+func DecryptEntryData(locCiphertexts [][]byte, encryptedEntryData []types.GCMCiphertext, locPrivateKey *rsa.PrivateKey) ([]types.EntryData, error) {
+	if len(locCiphertexts) != len(encryptedEntryData) {
+		return nil, fmt.Errorf("mismatch length between locCiphertexts and encrypted entry data")
+	}
+
+	// Decrypt loc ciphertexts
+	locData, err := decryptLOCCiphertexts(locCiphertexts, locPrivateKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decrypt LOC ciphertexts: %v", err)
+	}
+
+	// Validate
+	if !validateLOCData(locData, types.Counselor) {
+		return nil, fmt.Errorf("decrypted LOC ciphertexts but found non-Counselor data")
+	}
+
+	// Find k
+	kAsBytes, err := findKValueFromLOCData(locData)
+	if err != nil {
+		return nil, fmt.Errorf("failed to find k value from LOC ciphertexts: %v", err)
+	}
+
+	// Decrypt entry data
+	entryDatas := make([]types.EntryData, len(locData))
+	for i, d := range locData {
+		k_e, err := encryption.DecryptAES(kAsBytes, d.EncryptedKey)
+		if err != nil {
+			return nil, fmt.Errorf("failed to decrypt EncryptedEntryDataKey at index %v: %v", i, err)
+		}
+		entryData, err := symDecryptEntryData(encryptedEntryData[i], k_e)
+		if err != nil {
+			return nil, fmt.Errorf("failed to decrypt entry data at index %v: %v", i, err)
+		}
+		entryDatas[i] = entryData
+	}
+
+	return entryDatas, nil
+}
+
+func validateLOCData(data []types.LOCData, expectedLOCType types.LOCType) bool {
+	for _, d := range data {
+		if d.Type != expectedLOCType {
+			return false
+		}
+	}
+	return true
+}
+
+func decryptLOCCiphertexts(locCiphertexts [][]byte, privateKey *rsa.PrivateKey) ([]types.LOCData, error) {
+	// Decrypt ciphertexts to get all loc data
+	locData := make([]types.LOCData, len(locCiphertexts))
+	for i, c := range locCiphertexts {
+		decryptedCiphertext, err := decryptLOCCiphertext(c, privateKey)
+		if err != nil {
+			return nil, fmt.Errorf("failed to decrypt (D)LOC ciphertext at index %v: %v", i, err)
+		}
+		locData[i] = decryptedCiphertext
+	}
+
+	return locData, nil
+}
+
+func findKValueFromLOCData(locData []types.LOCData) ([]byte, error) {
+	// Form shamir (x,y) shares
+	shares := make([]*ss.Share, len(locData))
+	for i, d := range locData {
+		shares[i] = &ss.Share{
+			X: ff.IntFromBytes(d.U),
+			Y: ff.IntFromBytes(d.S),
+		}
+	}
+
+	// Find K Value (the key)
+	kAsElement, err := shamir.FindShamirKValue(shares)
+	if err != nil {
+		return nil, fmt.Errorf("failed to find k value: %v", err)
+	}
+	return kAsElement.Bytes(), nil
+}
+
+func decryptLOCCiphertext(locCiphertext []byte, privateKey *rsa.PrivateKey) (types.LOCData, error) {
+	// Decrypt ciphertext
+	dlocDataBytes, err := encryption.DecryptRSA(locCiphertext, privateKey)
+	if err != nil {
+		return types.LOCData{}, fmt.Errorf("failed to decrypt (D)LOC ciphertext: %v", err)
+	}
+
+	// Decode msgpack encoding of LOC data
+	dlocData, err := encoding.DecodeLOCData(dlocDataBytes)
+	if err != nil {
+		return types.LOCData{}, err
+	}
+
+	return dlocData, nil
+}
+
+func symDecryptAssignmentData(encryptedAssignmentData types.GCMCiphertext, assignmentDataKey []byte) (types.AssignmentData, error) {
+	// Decrypt assignment data
+	assignmentDataEncodedBytes, err := encryption.DecryptAES(assignmentDataKey, encryptedAssignmentData)
+	if err != nil {
+		return types.AssignmentData{}, fmt.Errorf("failed to decrypt assignment data: %v", err)
+	}
+
+	// Decode msgpack encoding
+	var decodedAssignmentData types.AssignmentData
+	err = msgpack.Unmarshal(assignmentDataEncodedBytes, &decodedAssignmentData)
+	if err != nil {
+		return types.AssignmentData{}, fmt.Errorf("failed to decode assignment data: %v", err)
+	}
+
+	return decodedAssignmentData, nil
+}
+
+func symDecryptEntryData(encryptedEntryData types.GCMCiphertext, entryDataKey []byte) (types.EntryData, error) {
+	// Decrypt entry data
+	assignmentDataEncodedBytes, err := encryption.DecryptAES(entryDataKey, encryptedEntryData)
+	if err != nil {
+		return types.EntryData{}, fmt.Errorf("failed to decrypt entry data: %v", err)
+	}
+
+	// Decode msgpack encoding
+	var decodedEntryData types.EntryData
+	err = msgpack.Unmarshal(assignmentDataEncodedBytes, &decodedEntryData)
+	if err != nil {
+		return types.EntryData{}, fmt.Errorf("failed to decode entry data: %v", err)
+	}
+
+	return decodedEntryData, nil
+}

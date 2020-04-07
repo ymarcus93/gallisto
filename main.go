@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 
 	"github.com/ymarcus93/gallisto/callisto"
@@ -10,7 +11,12 @@ import (
 )
 
 func main() {
-	callistoClient, err := callisto.NewCallistoClient(types.OPRF_CIPHERSUITE)
+	// Two callisto clients
+	callistoClientOne, err := callisto.NewCallistoClient(types.OPRF_CIPHERSUITE)
+	if err != nil {
+		panic(err)
+	}
+	callistoClientTwo, err := callisto.NewCallistoClient(types.OPRF_CIPHERSUITE)
 	if err != nil {
 		panic(err)
 	}
@@ -29,6 +35,7 @@ func main() {
 		panic(err)
 	}
 
+	// Generate DLOC/LOC keys
 	locKeys, err := encryption.GenerateRSAKeyPair()
 	if err != nil {
 		panic(err)
@@ -37,12 +44,12 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-
 	locPubKeys := types.LOCPublicKeys{
 		LOCPublicKey:  locKeys.PublicKey,
 		DLOCPublicKey: dlocKeys.PublicKey,
 	}
 
+	// Callisto entry
 	entry := types.CallistoEntry{
 		EntryData: types.EntryData{
 			PerpetratorName:            "Foo",
@@ -58,11 +65,46 @@ func main() {
 		},
 	}
 
+	// Compute two Callisto tuples of the same perp, but with two separate
+	// users. Because two users have reported the same perp, LOCs/DLOCs can
+	// decrypt
 	perpID := []byte("perpID")
-	tuple, err := callistoClient.CreateCallistoTuple(perpID, entry, locPubKeys, oprfServer)
+	tupleOne, err := callistoClientOne.CreateCallistoTuple(perpID, entry, locPubKeys, oprfServer)
 	if err != nil {
 		panic(err)
 	}
+	// Change the data slightly for user 2's report
+	entry.AssignmentData.VictimStateOfCurrentResidence = "BB"
+	entry.EntryData.PerpetratorTwitterUserName = "@bar"
+	tupleTwo, err := callistoClientTwo.CreateCallistoTuple(perpID, entry, locPubKeys, oprfServer)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Printf("%+v\n", tupleOne)
+	fmt.Printf("%+v\n", tupleTwo)
 
-	fmt.Printf("%+v\n", tuple)
+	// Sanity check pi values are the same
+	if !bytes.Equal(tupleOne.Pi, tupleTwo.Pi) {
+		panic("pi values are not equal")
+	}
+
+	dlocCiphertexts := [][]byte{tupleOne.DLOCCiphertext, tupleTwo.DLOCCiphertext}
+	encryptedAssignmentData := []types.GCMCiphertext{tupleOne.EncryptedAssignmentData, tupleTwo.EncryptedAssignmentData}
+	assignmentResults, err := callisto.DecryptAssignmentData(dlocCiphertexts, encryptedAssignmentData, dlocKeys.PrivateKey)
+	if err != nil {
+		panic(err)
+	}
+	for _, d := range assignmentResults {
+		fmt.Printf("%+v\n", d)
+	}
+
+	locCiphertexts := [][]byte{tupleOne.LOCCiphertext, tupleTwo.LOCCiphertext}
+	encryptedEntryData := []types.GCMCiphertext{tupleOne.EncryptedEntryData, tupleTwo.EncryptedEntryData}
+	entryResults, err := callisto.DecryptEntryData(locCiphertexts, encryptedEntryData, locKeys.PrivateKey)
+	if err != nil {
+		panic(err)
+	}
+	for _, d := range entryResults {
+		fmt.Printf("%+v\n", d)
+	}
 }
