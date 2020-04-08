@@ -84,7 +84,18 @@ func main() {
 	fmt.Printf("%+v\n", tupleTwo)
 
 	// Sanity check pi values are the same
-	if !bytes.Equal(tupleOne.Pi, tupleTwo.Pi) {
+	tuples := []types.CallistoTuple{tupleOne, tupleTwo}
+	matches, err := callisto.FindMatches(tuples)
+	if err != nil {
+		panic(err)
+	}
+	if len(matches) != 1 {
+		panic("no matches were found")
+	}
+	if len(matches[0].MatchedTuples) != 2 {
+		panic("incorrect length for matched tuples")
+	}
+	if !bytes.Equal(matches[0].MatchedTuples[0].Pi, matches[0].MatchedTuples[1].Pi) {
 		panic("pi values are not equal")
 	}
 
