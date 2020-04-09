@@ -5,28 +5,49 @@ import (
 	"crypto/cipher"
 	"fmt"
 
-	"github.com/ymarcus93/gallisto/types"
 	"github.com/ymarcus93/gallisto/util"
 )
 
+// GCMCiphertext holds the three components of an AES-GCM ciphertext
+type GCMCiphertext struct {
+	Nonce          []byte
+	Ciphertext     []byte
+	AssociatedData []byte
+}
+
+// IsValid validates the GCMCiphertext struct and returns a non-nil error if it
+// is invalid. The returned error is nil if the struct is valid.
+func (c GCMCiphertext) IsValid() error {
+	if c.Nonce == nil {
+		return fmt.Errorf("Nonce cannot be nil")
+	}
+	if c.Ciphertext == nil {
+		return fmt.Errorf("Ciphertext cannot be nil")
+	}
+	if c.AssociatedData == nil {
+		return fmt.Errorf("AssociatedData cannot be nil")
+	}
+	return nil
+}
+
 // EncryptAES encrypts the given plaintext using the provided key
-func EncryptAES(key, plaintext, associatedData []byte) (types.GCMCiphertext, error) {
+func EncryptAES(key, plaintext, associatedData []byte) (GCMCiphertext, error) {
 	aesGCM, err := initAESGCM(key)
 	if err != nil {
-		return types.GCMCiphertext{}, err
+		return GCMCiphertext{}, err
 	}
 
 	// AES GCM uses nonces of 12 bytes
 	nonce, err := util.GenerateRandomBytes(12)
 	if err != nil {
-		return types.GCMCiphertext{}, err
+		return GCMCiphertext{}, err
 	}
 	ciphertext := aesGCM.Seal(nil, nonce, plaintext, associatedData)
-	return types.GCMCiphertext{Nonce: nonce, Ciphertext: ciphertext, AssociatedData: associatedData}, nil
+	return GCMCiphertext{Nonce: nonce, Ciphertext: ciphertext, AssociatedData: associatedData}, nil
 }
 
-// DecryptAES decrypts a types.GCMCiphertext using the provided key
-func DecryptAES(key []byte, gcmCiphertext types.GCMCiphertext) ([]byte, error) {
+// DecryptAES decrypts a GCMCiphertext using the provided key
+func DecryptAES(key []byte, gcmCiphertext GCMCiphertext) ([]byte, error) {
 	aesGCM, err := initAESGCM(key)
 	if err != nil {
 		return nil, err

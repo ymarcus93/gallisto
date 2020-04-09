@@ -1,4 +1,4 @@
-package callisto
+package client
 
 import (
 	"crypto/rsa"
@@ -24,6 +24,25 @@ type CallistoClient struct {
 	UserID     []byte
 	userKey    []byte
 	oprfClient *oprf.OPRFClient
+}
+
+// LOCPublicKeys encapsulates the public keys needed by a CallistoClient to
+// create ciphertexts for the LOCs
+type LOCPublicKeys struct {
+	LOCPublicKey  *rsa.PublicKey
+	DLOCPublicKey *rsa.PublicKey
+}
+
+// CallistoEntry encapsulates all the information a CallistoClient encrypts
+type CallistoEntry struct {
+	EntryData      types.EntryData
+	AssignmentData types.AssignmentData
+}
+
+// OPRFEvaluator represents the holder of the OPRF key who can evaluate
+// arbitrary inputs
+type OPRFEvaluator interface {
+	EvaluateOPRF(blindedInputValues []gg.GroupElement) ([]gg.GroupElement, error)
 }
 
 type akpi struct {
@@ -61,7 +80,7 @@ func NewCallistoClient(ciphersuite string) (*CallistoClient, error) {
 // CreateCallistoTuple performs the entire Callisto client encryption of a
 // Callisto entry and returns the 6-tuple to be sent to a Callisto database
 // server
-func (c *CallistoClient) CreateCallistoTuple(perpID []byte, entry types.CallistoEntry, pubKeys types.LOCPublicKeys, evaluator oprf.OPRFEvaluator) (types.CallistoTuple, error) {
+func (c *CallistoClient) CreateCallistoTuple(perpID []byte, entry CallistoEntry, pubKeys LOCPublicKeys, evaluator OPRFEvaluator) (types.CallistoTuple, error) {
 	// Evaluate the OPRF to get P-Hat
 	pHat, err := c.getPHatValue(perpID, evaluator)
 	if err != nil {
@@ -97,28 +116,32 @@ func (c *CallistoClient) CreateCallistoTuple(perpID []byte, entry types.Callisto
 		pubKeys.DLOCPublicKey,
 	)
 
-	return types.CallistoTuple{
-		Pi:                                akpiValues.pi,
-		LOCCiphertext:                     locCiphertext,
-		DLOCCiphertext:                    dlocCiphertext,
-		EncryptedEntryDataKeyUnderUserKey: encryptedCallistoEntryData.encryptedEntryDataKeyByU,
-		EncryptedEntryData:                encryptedCallistoEntryData.encryptedEntryData,
-		EncryptedAssignmentData:           encryptedCallistoEntryData.encryptedAssignmentData,
-	}, nil
+	tuple, err := types.NewCallistoTuple(
+		akpiValues.pi,
+		locCiphertext,
+		dlocCiphertext,
+		encryptedCallistoEntryData.encryptedEntryDataKeyByU,
+		encryptedCallistoEntryData.encryptedEntryData,
+		encryptedCallistoEntryData.encryptedAssignmentData,
+	)
+	if err != nil {
+		return types.CallistoTuple{}, fmt.Errorf("failed to construct tuple: %v", err)
+	}
+	return tuple, nil
 }
 
 type encryptedCallistoEntry struct {
-	encryptedEntryData       types.GCMCiphertext // eEntry value
-	encryptedEntryDataKeyByK types.GCMCiphertext // c_e value
-	encryptedEntryDataKeyByU types.GCMCiphertext // c_u value
+	encryptedEntryData       encryption.GCMCiphertext // eEntry value
+	encryptedEntryDataKeyByK encryption.GCMCiphertext // c_e value
+	encryptedEntryDataKeyByU encryption.GCMCiphertext // c_u value
 
-	encryptedAssignmentData       types.GCMCiphertext // eAssign value
-	encryptedAssignmentDataKeyByK types.GCMCiphertext // c_a value
+	encryptedAssignmentData       encryption.GCMCiphertext // eAssign value
+	encryptedAssignmentDataKeyByK encryption.GCMCiphertext // c_a value
 }
 
 // encryptEntry performs client-side symmetric encryption operations involved in
 // encrypting an entry
-func (c *CallistoClient) encryptEntry(entry types.CallistoEntry, akpiValues akpi) (encryptedCallistoEntry, error) {
+func (c *CallistoClient) encryptEntry(entry CallistoEntry, akpiValues akpi) (encryptedCallistoEntry, error) {
 	// Encrypt entry data: eEntry
 	encryptedEntryData, entryDataKey, err := encryptEntryData(entry.EntryData, akpiValues.pi)
 	if err != nil {
@@ -161,23 +184,23 @@ func (c *CallistoClient) encryptEntry(entry types.CallistoEntry, akpiValues akpi
 // encryptEntryData generates a fresh random key and uses it to encrypt
 // entry data. The returned result is both the encrypted entry data
 // and the random key generated.
-func encryptEntryData(data types.EntryData, pi []byte) (types.GCMCiphertext, []byte, error) {
+func encryptEntryData(data types.EntryData, pi []byte) (encryption.GCMCiphertext, []byte, error) {
 	// Create msgpack encoding of entry data
 	entryDataEncodedBytes, err := encoding.EncodeEntryData(data)
 	if err != nil {
-		return types.GCMCiphertext{}, nil, err
+		return encryption.GCMCiphertext{}, nil, err
 	}
 
 	// Generate random entry data key: k_e
 	entryDataKey, err := util.GenerateRandomBytes(32)
 	if err != nil {
-		return types.GCMCiphertext{}, nil, err
+		return encryption.GCMCiphertext{}, nil, err
 	}
 
 	// Encrypt entryData to get eEntry
 	encryptedEntryData, err := encryption.EncryptAES(entryDataKey, entryDataEncodedBytes, pi)
 	if err != nil {
-		return types.GCMCiphertext{}, nil, fmt.Errorf("failed to encrypt entry data: %v", err)
+		return encryption.GCMCiphertext{}, nil, fmt.Errorf("failed to encrypt entry data: %v", err)
 	}
 
 	return encryptedEntryData, entryDataKey, nil
@@ -186,23 +209,23 @@ func encryptEntryData(data types.EntryData, pi []byte) (types.GCMCiphertext, []b
 // encryptAssignmentData generates a fresh random key and uses it to encrypt
 // assignment data. The returned result is both the encrypted assignment data
 // and the random key generated.
-func encryptAssignmentData(data types.AssignmentData, pi []byte) (types.GCMCiphertext, []byte, error) {
+func encryptAssignmentData(data types.AssignmentData, pi []byte) (encryption.GCMCiphertext, []byte, error) {
 	// Create msgpack encoding of assignment data
 	assignmentDataEncodedBytes, err := encoding.EncodeAssignmentData(data)
 	if err != nil {
-		return types.GCMCiphertext{}, nil, err
+		return encryption.GCMCiphertext{}, nil, err
 	}
 
 	// Generate random assignment data key: k_a
 	assignmentDataKey, err := util.GenerateRandomBytes(32)
 	if err != nil {
-		return types.GCMCiphertext{}, nil, err
+		return encryption.GCMCiphertext{}, nil, err
 	}
 
 	// Encrypt assignmentData to get eAssign
 	encryptedAssignmentData, err := encryption.EncryptAES(assignmentDataKey, assignmentDataEncodedBytes, pi)
 	if err != nil {
-		return types.GCMCiphertext{}, nil, fmt.Errorf("failed to encrypt assignment data: %v", err)
+		return encryption.GCMCiphertext{}, nil, fmt.Errorf("failed to encrypt assignment data: %v", err)
 	}
 
 	return encryptedAssignmentData, assignmentDataKey, nil
@@ -210,12 +233,10 @@ func encryptAssignmentData(data types.AssignmentData, pi []byte) (types.GCMCiphe
 
 // encryptLOCData forms the c or c_assign tuple (depending on locType) and
 // encrypts the necessary data for a LOC
-func encryptLOCData(locType types.LOCType, shamirShare *ss.Share, encryptedKey types.GCMCiphertext, locPublicKey *rsa.PublicKey) ([]byte, error) {
-	locData := types.LOCData{
-		Type:         locType,
-		U:            shamirShare.X.Bytes(),
-		S:            shamirShare.Y.Bytes(),
-		EncryptedKey: encryptedKey,
+func encryptLOCData(locType types.LOCType, shamirShare *ss.Share, encryptedKey encryption.GCMCiphertext, locPublicKey *rsa.PublicKey) ([]byte, error) {
+	locData, err := types.NewLOCData(locType, shamirShare, encryptedKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to construct loc data: %v", err)
 	}
 
 	// Create msgpack encoding of LOC data
@@ -235,7 +256,7 @@ func encryptLOCData(locType types.LOCType, shamirShare *ss.Share, encryptedKey t
 
 // getPHatValue asks an OPRF evaluator to transform a low-entropy perpetrator ID
 // into a pseudorandom value with sufficient entropy
-func (c *CallistoClient) getPHatValue(perpID []byte, evaluator oprf.OPRFEvaluator) ([]byte, error) {
+func (c *CallistoClient) getPHatValue(perpID []byte, evaluator OPRFEvaluator) ([]byte, error) {
 	// Create blinded group element M
 	blindedElement, err := c.oprfClient.Blind(perpID)
 	if err != nil {

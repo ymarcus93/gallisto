@@ -1,11 +1,10 @@
-package callisto
+package protocol
 
 import (
 	"crypto/rsa"
 	"fmt"
 
 	ss "github.com/superarius/shamir"
-	ff "github.com/superarius/shamir/modular"
 
 	"github.com/vmihailenco/msgpack"
 
@@ -19,7 +18,7 @@ import (
 // this by finding a common k value amongst matched dlocData and attempting to
 // decrypt encrypted assignment keys with this k. It then uses the decrypted
 // assignment keys to decrypt all assignment data.
-func DecryptAssignmentData(dlocCiphertexts [][]byte, encryptedAssignmentData []types.GCMCiphertext, dlocPrivateKey *rsa.PrivateKey) ([]types.AssignmentData, error) {
+func DecryptAssignmentData(dlocCiphertexts [][]byte, encryptedAssignmentData []encryption.GCMCiphertext, dlocPrivateKey *rsa.PrivateKey) ([]types.AssignmentData, error) {
 	if len(dlocCiphertexts) != len(encryptedAssignmentData) {
 		return nil, fmt.Errorf("mismatch length between dlocCiphertexts and encrypted assignment data")
 	}
@@ -44,7 +43,7 @@ func DecryptAssignmentData(dlocCiphertexts [][]byte, encryptedAssignmentData []t
 	// Decrypt assignment data
 	assignmentDatas := make([]types.AssignmentData, len(dlocData))
 	for i, d := range dlocData {
-		k_a, err := encryption.DecryptAES(kAsBytes, d.EncryptedKey)
+		k_a, err := encryption.DecryptAES(kAsBytes, d.EncryptedKey())
 		if err != nil {
 			return nil, fmt.Errorf("failed to decrypt EncryptedAssignmentDataKey at index %v: %v", i, err)
 		}
@@ -62,7 +61,7 @@ func DecryptAssignmentData(dlocCiphertexts [][]byte, encryptedAssignmentData []t
 // finding a common k value amongst matched locData and attempting to decrypt
 // encrypted entry keys with this k. It then uses the decrypted entry keys to
 // decrypt all entry data.
-func DecryptEntryData(locCiphertexts [][]byte, encryptedEntryData []types.GCMCiphertext, locPrivateKey *rsa.PrivateKey) ([]types.EntryData, error) {
+func DecryptEntryData(locCiphertexts [][]byte, encryptedEntryData []encryption.GCMCiphertext, locPrivateKey *rsa.PrivateKey) ([]types.EntryData, error) {
 	if len(locCiphertexts) != len(encryptedEntryData) {
 		return nil, fmt.Errorf("mismatch length between locCiphertexts and encrypted entry data")
 	}
@@ -87,7 +86,7 @@ func DecryptEntryData(locCiphertexts [][]byte, encryptedEntryData []types.GCMCip
 	// Decrypt entry data
 	entryDatas := make([]types.EntryData, len(locData))
 	for i, d := range locData {
-		k_e, err := encryption.DecryptAES(kAsBytes, d.EncryptedKey)
+		k_e, err := encryption.DecryptAES(kAsBytes, d.EncryptedKey())
 		if err != nil {
 			return nil, fmt.Errorf("failed to decrypt EncryptedEntryDataKey at index %v: %v", i, err)
 		}
@@ -103,7 +102,7 @@ func DecryptEntryData(locCiphertexts [][]byte, encryptedEntryData []types.GCMCip
 
 func validateLOCData(data []types.LOCData, expectedLOCType types.LOCType) bool {
 	for _, d := range data {
-		if d.Type != expectedLOCType {
+		if d.LocType() != expectedLOCType {
 			return false
 		}
 	}
@@ -128,10 +127,7 @@ func findKValueFromLOCData(locData []types.LOCData) ([]byte, error) {
 	// Form shamir (x,y) shares
 	shares := make([]*ss.Share, len(locData))
 	for i, d := range locData {
-		shares[i] = &ss.Share{
-			X: ff.IntFromBytes(d.U),
-			Y: ff.IntFromBytes(d.S),
-		}
+		shares[i] = d.GetShamirShare()
 	}
 
 	// Find K Value (the key)
@@ -158,7 +154,7 @@ func decryptLOCCiphertext(locCiphertext []byte, privateKey *rsa.PrivateKey) (typ
 	return dlocData, nil
 }
 
-func symDecryptAssignmentData(encryptedAssignmentData types.GCMCiphertext, assignmentDataKey []byte) (types.AssignmentData, error) {
+func symDecryptAssignmentData(encryptedAssignmentData encryption.GCMCiphertext, assignmentDataKey []byte) (types.AssignmentData, error) {
 	// Decrypt assignment data
 	assignmentDataEncodedBytes, err := encryption.DecryptAES(assignmentDataKey, encryptedAssignmentData)
 	if err != nil {
@@ -175,7 +171,7 @@ func symDecryptAssignmentData(encryptedAssignmentData types.GCMCiphertext, assig
 	return decodedAssignmentData, nil
 }
 
-func symDecryptEntryData(encryptedEntryData types.GCMCiphertext, entryDataKey []byte) (types.EntryData, error) {
+func symDecryptEntryData(encryptedEntryData encryption.GCMCiphertext, entryDataKey []byte) (types.EntryData, error) {
 	// Decrypt entry data
 	assignmentDataEncodedBytes, err := encryption.DecryptAES(entryDataKey, encryptedEntryData)
 	if err != nil {

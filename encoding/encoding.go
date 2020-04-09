@@ -55,10 +55,11 @@ func DecodeAssignmentData(encodedAssignmentData []byte) (types.AssignmentData, e
 
 // EncodeLOCData returns a msgpack encoding of LOC data
 func EncodeLOCData(locData types.LOCData) ([]byte, error) {
+	msgPackStruct := locData.ToLOCDataMsgPack()
 	// Create msgpack encoding of LOC data
-	locDataEncodedBytes, err := msgpack.Marshal(&locData)
+	locDataEncodedBytes, err := msgpack.Marshal(&msgPackStruct)
 	if err != nil {
-		return nil, fmt.Errorf("failed to encode %v LOC data: %v", locData.Type, err)
+		return nil, fmt.Errorf("failed to encode %v LOC data: %v", locData.LocType(), err)
 	}
 
 	return locDataEncodedBytes, nil
@@ -67,11 +68,16 @@ func EncodeLOCData(locData types.LOCData) ([]byte, error) {
 // DecodeLOCData decodes msgpack encoding of LOC data
 func DecodeLOCData(encodedLOCData []byte) (types.LOCData, error) {
 	// Decode msgpack encoding of LOC data
-	var decodedLOCData types.LOCData
+	var decodedLOCData types.LOCDataMsgPack
 	err := msgpack.Unmarshal(encodedLOCData, &decodedLOCData)
 	if err != nil {
 		return types.LOCData{}, fmt.Errorf("failed to decode (D)LOC data: %v", err)
 	}
 
-	return decodedLOCData, nil
+	locData, err := types.FromLOCDataMsgPack(decodedLOCData)
+	if err != nil {
+		return types.LOCData{}, fmt.Errorf("failed to convert (D)LOC msgpack encoding into LOCData struct: %v", err)
+	}
+
+	return locData, nil
 }

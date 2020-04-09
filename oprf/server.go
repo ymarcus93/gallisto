@@ -10,10 +10,6 @@ import (
 	"github.com/alxdavids/voprf-poc/go/oprf/groups/ecgroup"
 )
 
-type OPRFEvaluator interface {
-	EvaluateOPRF(blindedInputValues []gg.GroupElement) ([]gg.GroupElement, error)
-}
-
 type OPRFServer struct {
 	Ciphersuite string
 	server      oprf.Server

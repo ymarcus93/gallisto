@@ -1,18 +1,10 @@
 package types
 
-import (
-	"crypto/rsa"
-)
-
+// The ciphersuite used for the OPRF protocol
 const OPRF_CIPHERSUITE string = "OPRF-P521-HKDF-SHA512-SSWU-RO"
 
-// GCMCiphertext holds the three components of an AES-GCM ciphertext
-type GCMCiphertext struct {
-	Nonce          []byte
-	Ciphertext     []byte
-	AssociatedData []byte
-}
-
+// EntryData encapsulates information about the perpetrator and the victim.
+// EntryData is only meant to be viewed by LOCs.
 type EntryData struct {
 	PerpetratorName            string
 	PerpetratorTwitterUserName string
@@ -21,44 +13,19 @@ type EntryData struct {
 	VictimEmail                string
 }
 
+// AssignmentData encapsulates the necessary information for DLOCs to assign
+// matched users to LOCs. AssignmentData is onnly meant to be viewed by DLOCs.
 type AssignmentData struct {
 	VictimStateOfCurrentResidence    string
 	CategorizationOfSexualMisconduct string
 	IndustryOfPerpetrator            string
 }
 
+// An enum that represents the type of LOC
 type LOCType int
 
 const (
-	Director LOCType = iota
-	Counselor
+	Unknown   LOCType = iota // Default case
+	Director                 // Also known as DLOC
+	Counselor                // Also known as LOC
 )
-
-type LOCData struct {
-	Type LOCType
-	U    []byte
-	S    []byte
-
-	// Either c_e or c_a depending on Type. If Director, then c_a. If Counselor,
-	// then c_e
-	EncryptedKey GCMCiphertext
-}
-
-type CallistoTuple struct {
-	Pi                                []byte
-	LOCCiphertext                     []byte
-	DLOCCiphertext                    []byte
-	EncryptedEntryDataKeyUnderUserKey GCMCiphertext
-	EncryptedEntryData                GCMCiphertext
-	EncryptedAssignmentData           GCMCiphertext
-}
-
-type LOCPublicKeys struct {
-	LOCPublicKey  *rsa.PublicKey
-	DLOCPublicKey *rsa.PublicKey
-}
-
-type CallistoEntry struct {
-	EntryData      EntryData
-	AssignmentData AssignmentData
-}

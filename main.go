@@ -4,19 +4,20 @@ import (
 	"bytes"
 	"fmt"
 
-	"github.com/ymarcus93/gallisto/callisto"
 	"github.com/ymarcus93/gallisto/encryption"
 	"github.com/ymarcus93/gallisto/oprf"
+	"github.com/ymarcus93/gallisto/protocol"
+	"github.com/ymarcus93/gallisto/protocol/client"
 	"github.com/ymarcus93/gallisto/types"
 )
 
 func main() {
 	// Two callisto clients
-	callistoClientOne, err := callisto.NewCallistoClient(types.OPRF_CIPHERSUITE)
+	callistoClientOne, err := client.NewCallistoClient(types.OPRF_CIPHERSUITE)
 	if err != nil {
 		panic(err)
 	}
-	callistoClientTwo, err := callisto.NewCallistoClient(types.OPRF_CIPHERSUITE)
+	callistoClientTwo, err := client.NewCallistoClient(types.OPRF_CIPHERSUITE)
 	if err != nil {
 		panic(err)
 	}
@@ -44,13 +45,13 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	locPubKeys := types.LOCPublicKeys{
+	locPubKeys := client.LOCPublicKeys{
 		LOCPublicKey:  locKeys.PublicKey,
 		DLOCPublicKey: dlocKeys.PublicKey,
 	}
 
 	// Callisto entry
-	entry := types.CallistoEntry{
+	entry := client.CallistoEntry{
 		EntryData: types.EntryData{
 			PerpetratorName:            "Foo",
 			PerpetratorTwitterUserName: "@foo",
@@ -84,24 +85,25 @@ func main() {
 	fmt.Printf("%+v\n", tupleTwo)
 
 	// Sanity check pi values are the same
-	tuples := []types.CallistoTuple{tupleOne, tupleTwo}
-	matches, err := callisto.FindMatches(tuples)
+	tuples := []protocol.HasPi{tupleOne, tupleTwo}
+	matches, err := protocol.FindMatches(tuples)
 	if err != nil {
 		panic(err)
 	}
 	if len(matches) != 1 {
 		panic("no matches were found")
 	}
-	if len(matches[0].MatchedTuples) != 2 {
+	if len(matches[0].MatchedEntries) != 2 {
 		panic("incorrect length for matched tuples")
 	}
-	if !bytes.Equal(matches[0].MatchedTuples[0].Pi, matches[0].MatchedTuples[1].Pi) {
+	if !bytes.Equal(matches[0].MatchedEntries[0].Pi(), matches[0].MatchedEntries[1].Pi()) {
 		panic("pi values are not equal")
 	}
+	fmt.Printf("Matches: %+v\n", matches)
 
-	dlocCiphertexts := [][]byte{tupleOne.DLOCCiphertext, tupleTwo.DLOCCiphertext}
-	encryptedAssignmentData := []types.GCMCiphertext{tupleOne.EncryptedAssignmentData, tupleTwo.EncryptedAssignmentData}
-	assignmentResults, err := callisto.DecryptAssignmentData(dlocCiphertexts, encryptedAssignmentData, dlocKeys.PrivateKey)
+	dlocCiphertexts := [][]byte{tupleOne.DLOCCiphertext(), tupleTwo.DLOCCiphertext()}
+	encryptedAssignmentData := []encryption.GCMCiphertext{tupleOne.EncryptedAssignmentData(), tupleTwo.EncryptedAssignmentData()}
+	assignmentResults, err := protocol.DecryptAssignmentData(dlocCiphertexts, encryptedAssignmentData, dlocKeys.PrivateKey)
 	if err != nil {
 		panic(err)
 	}
@@ -109,9 +111,9 @@ func main() {
 		fmt.Printf("%+v\n", d)
 	}
 
-	locCiphertexts := [][]byte{tupleOne.LOCCiphertext, tupleTwo.LOCCiphertext}
-	encryptedEntryData := []types.GCMCiphertext{tupleOne.EncryptedEntryData, tupleTwo.EncryptedEntryData}
-	entryResults, err := callisto.DecryptEntryData(locCiphertexts, encryptedEntryData, locKeys.PrivateKey)
+	locCiphertexts := [][]byte{tupleOne.LOCCiphertext(), tupleTwo.LOCCiphertext()}
+	encryptedEntryData := []encryption.GCMCiphertext{tupleOne.EncryptedEntryData(), tupleTwo.EncryptedEntryData()}
+	entryResults, err := protocol.DecryptEntryData(locCiphertexts, encryptedEntryData, locKeys.PrivateKey)
 	if err != nil {
 		panic(err)
 	}
