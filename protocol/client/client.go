@@ -8,22 +8,20 @@ import (
 
 	"github.com/ymarcus93/gallisto/encoding"
 	"github.com/ymarcus93/gallisto/encryption"
-	"github.com/ymarcus93/gallisto/oprf"
 	"github.com/ymarcus93/gallisto/shamir"
 	"github.com/ymarcus93/gallisto/types"
 	"github.com/ymarcus93/gallisto/util"
 
 	ss "github.com/superarius/shamir"
 
-	gg "github.com/alxdavids/voprf-poc/go/oprf/groups"
 	"github.com/google/uuid"
 	"golang.org/x/crypto/hkdf"
 )
 
 type CallistoClient struct {
-	UserID     []byte
-	userKey    []byte
-	oprfClient *oprf.OPRFClient
+	UserID       []byte
+	userKey      []byte
+	pHatComputer PHatComputer
 }
 
 // LOCPublicKeys encapsulates the public keys needed by a CallistoClient to
@@ -39,10 +37,10 @@ type CallistoEntry struct {
 	AssignmentData types.AssignmentData
 }
 
-// OPRFEvaluator represents the holder of the OPRF key who can evaluate
-// arbitrary inputs
-type OPRFEvaluator interface {
-	EvaluateOPRF(blindedInputValues []gg.GroupElement) ([]gg.GroupElement, error)
+// PHatComputer can transform a low-entropy perpetrator ID into a pseudorandom
+// value with sufficient entropy
+type PHatComputer interface {
+	GetPHatValue(perpID []byte) ([]byte, error)
 }
 
 type akpi struct {
@@ -53,15 +51,10 @@ type akpi struct {
 
 // NewCallistoClient returns a CallistoClient capabale of performing Callisto
 // client responsibilities
-func NewCallistoClient(ciphersuite string) (*CallistoClient, error) {
+func NewCallistoClient(pHatComputer PHatComputer) (*CallistoClient, error) {
 	userKey, err := util.GenerateRandomBytes(32)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate user key: %v", err)
-	}
-
-	oprfClient, err := oprf.NewOPRFClient(types.OPRF_CIPHERSUITE)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create OPRF client: %v", err)
 	}
 
 	uuid := uuid.New()
@@ -71,20 +64,19 @@ func NewCallistoClient(ciphersuite string) (*CallistoClient, error) {
 	}
 
 	return &CallistoClient{
-		userKey:    userKey,
-		oprfClient: oprfClient,
-		UserID:     uuidAsBytes,
+		userKey:      userKey,
+		UserID:       uuidAsBytes,
+		pHatComputer: pHatComputer,
 	}, nil
 }
 
 // CreateCallistoTuple performs the entire Callisto client encryption of a
 // Callisto entry and returns the 6-tuple to be sent to a Callisto database
 // server
-func (c *CallistoClient) CreateCallistoTuple(perpID []byte, entry CallistoEntry, pubKeys LOCPublicKeys, evaluator OPRFEvaluator) (types.CallistoTuple, error) {
-	// Evaluate the OPRF to get P-Hat
-	pHat, err := c.getPHatValue(perpID, evaluator)
+func (c *CallistoClient) CreateCallistoTuple(perpID []byte, entry CallistoEntry, pubKeys LOCPublicKeys) (types.CallistoTuple, error) {
+	pHat, err := c.pHatComputer.GetPHatValue(perpID)
 	if err != nil {
-		return types.CallistoTuple{}, fmt.Errorf("failed to evaulate OPRF and get p-hat: %v", err)
+		return types.CallistoTuple{}, fmt.Errorf("failed to derive p-hat: %v", err)
 	}
 
 	// Derive from P-Hat three 32-byte pseudorandom values
@@ -252,38 +244,6 @@ func encryptLOCData(locType types.LOCType, shamirShare *ss.Share, encryptedKey e
 	}
 
 	return locCiphertext, nil
-}
-
-// getPHatValue asks an OPRF evaluator to transform a low-entropy perpetrator ID
-// into a pseudorandom value with sufficient entropy
-func (c *CallistoClient) getPHatValue(perpID []byte, evaluator OPRFEvaluator) ([]byte, error) {
-	// Create blinded group element M
-	blindedElement, err := c.oprfClient.Blind(perpID)
-	if err != nil {
-		return nil, err
-	}
-
-	// Evalulate the OPRF to get Z value
-	elems := []gg.GroupElement{blindedElement.M}
-	zValues, err := evaluator.EvaluateOPRF(elems)
-	if err != nil {
-		return nil, err
-	}
-
-	// Unblind Z values to get N values
-	blindedElements := []oprf.BlindedElement{blindedElement}
-	nValues, err := c.oprfClient.Unblind(blindedElements, zValues)
-	if err != nil {
-		return nil, err
-	}
-
-	// Finalize and get resulting P-Hat
-	pHat, err := c.oprfClient.Finalize(nValues[0], perpID)
-	if err != nil {
-		return nil, err
-	}
-
-	return pHat, nil
 }
 
 // deriveAKPiValues derives the triple: (a, k, pi) from a result given by an

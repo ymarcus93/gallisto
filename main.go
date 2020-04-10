@@ -12,16 +12,6 @@ import (
 )
 
 func main() {
-	// Two callisto clients
-	callistoClientOne, err := client.NewCallistoClient(types.OPRF_CIPHERSUITE)
-	if err != nil {
-		panic(err)
-	}
-	callistoClientTwo, err := client.NewCallistoClient(types.OPRF_CIPHERSUITE)
-	if err != nil {
-		panic(err)
-	}
-
 	// Deterministic OPRF key for testing purposes
 	key, err := oprf.KeyFromHex(
 		types.OPRF_CIPHERSUITE,
@@ -32,6 +22,22 @@ func main() {
 		panic(err)
 	}
 	oprfServer, err := oprf.NewOPRFServer(types.OPRF_CIPHERSUITE, key)
+	if err != nil {
+		panic(err)
+	}
+
+	// Encapsulate both the OPRF client and server into one computer of PHats
+	phatComputer, err := oprf.NewPHatComputer(oprfServer)
+	if err != nil {
+		panic(err)
+	}
+
+	// Two callisto clients
+	callistoClientOne, err := client.NewCallistoClient(phatComputer)
+	if err != nil {
+		panic(err)
+	}
+	callistoClientTwo, err := client.NewCallistoClient(phatComputer)
 	if err != nil {
 		panic(err)
 	}
@@ -70,14 +76,14 @@ func main() {
 	// users. Because two users have reported the same perp, LOCs/DLOCs can
 	// decrypt
 	perpID := []byte("perpID")
-	tupleOne, err := callistoClientOne.CreateCallistoTuple(perpID, entry, locPubKeys, oprfServer)
+	tupleOne, err := callistoClientOne.CreateCallistoTuple(perpID, entry, locPubKeys)
 	if err != nil {
 		panic(err)
 	}
 	// Change the data slightly for user 2's report
 	entry.AssignmentData.VictimStateOfCurrentResidence = "BB"
 	entry.EntryData.PerpetratorTwitterUserName = "@bar"
-	tupleTwo, err := callistoClientTwo.CreateCallistoTuple(perpID, entry, locPubKeys, oprfServer)
+	tupleTwo, err := callistoClientTwo.CreateCallistoTuple(perpID, entry, locPubKeys)
 	if err != nil {
 		panic(err)
 	}
