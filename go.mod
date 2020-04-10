@@ -6,7 +6,7 @@ require (
 	github.com/alxdavids/voprf-poc/go v0.0.0-20200327170552-d7e2c578b2b5
 	github.com/golang/protobuf v1.3.5 // indirect
 	github.com/google/uuid v1.1.1
-	github.com/stretchr/testify v1.4.0
+	github.com/stretchr/testify v1.5.1
 	github.com/superarius/shamir v0.0.0-20180728155515-87c5b9784915
 	github.com/vmihailenco/msgpack v4.0.4+incompatible
 	golang.org/x/crypto v0.0.0-20200406173513-056763e48d71
