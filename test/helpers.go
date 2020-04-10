@@ -33,6 +33,13 @@ func CreateGCMCiphertext(t *testing.T) encryption.GCMCiphertext {
 	}
 }
 
+func CreateInvalidGCMCiphertexts(t *testing.T) []encryption.GCMCiphertext {
+	nilNonce := encryption.GCMCiphertext{Nonce: nil, Ciphertext: GenerateRandomBytes(32, t), AssociatedData: GenerateRandomBytes(32, t)}
+	nilCiphertext := encryption.GCMCiphertext{Nonce: GenerateRandomBytes(32, t), Ciphertext: nil, AssociatedData: GenerateRandomBytes(32, t)}
+	nilAssociatedData := encryption.GCMCiphertext{Nonce: GenerateRandomBytes(32, t), Ciphertext: GenerateRandomBytes(32, t), AssociatedData: nil}
+	return []encryption.GCMCiphertext{nilNonce, nilCiphertext, nilAssociatedData}
+}
+
 func GenerateRandomModularInt(t *testing.T) *modular.Int {
 	rand, err := modular.RandInt()
 	if err != nil {

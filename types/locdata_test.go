@@ -13,6 +13,7 @@ import (
 )
 
 func TestNewLOCData_Invalid(t *testing.T) {
+	invalidCtxs := helper.CreateInvalidGCMCiphertexts(t)
 	tests := map[string]struct {
 		locType      LOCType
 		shamirShare  *shamir.Share
@@ -41,17 +42,17 @@ func TestNewLOCData_Invalid(t *testing.T) {
 		"invalid ciphertext (nil nonce)": {
 			locType:      Director,
 			shamirShare:  helper.CreateShamirShare(t),
-			encryptedKey: encryption.GCMCiphertext{Nonce: nil, Ciphertext: helper.GenerateRandomBytes(32, t), AssociatedData: helper.GenerateRandomBytes(32, t)},
+			encryptedKey: invalidCtxs[0],
 		},
 		"invalid ciphertext (nil ciphertext)": {
 			locType:      Director,
 			shamirShare:  helper.CreateShamirShare(t),
-			encryptedKey: encryption.GCMCiphertext{Nonce: helper.GenerateRandomBytes(32, t), Ciphertext: nil, AssociatedData: helper.GenerateRandomBytes(32, t)},
+			encryptedKey: invalidCtxs[1],
 		},
 		"invalid ciphertext (nil associated data)": {
 			locType:      Director,
 			shamirShare:  helper.CreateShamirShare(t),
-			encryptedKey: encryption.GCMCiphertext{Nonce: helper.GenerateRandomBytes(32, t), Ciphertext: helper.GenerateRandomBytes(32, t), AssociatedData: nil},
+			encryptedKey: invalidCtxs[2],
 		},
 	}
 
