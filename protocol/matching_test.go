@@ -4,54 +4,47 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/ymarcus93/gallisto/util"
+	helper "github.com/ymarcus93/gallisto/test"
 )
 
 const PI_SIZE = 32
 
-type randomPi struct{}
-
-func (r randomPi) Pi() []byte {
-	randBytes, err := util.GenerateRandomBytes(PI_SIZE)
-	if err != nil {
-		panic(err)
-	}
-	return randBytes
-}
-
-type fixedPi struct {
+type testPi struct {
 	pi []byte
 }
 
-func (f fixedPi) Pi() []byte {
+func (f testPi) Pi() []byte {
 	return f.pi
+}
+
+func createRandomPis(numToCreate int, t *testing.T) []HasPi {
+	entries := make([]HasPi, numToCreate)
+	for i := 0; i < numToCreate; i++ {
+		randBytes := helper.GenerateRandomBytes(PI_SIZE, t)
+		entries[i] = testPi{pi: randBytes}
+	}
+	return entries
 }
 
 func createFixedPis(numToCreate int, sharedPiValue []byte) []HasPi {
 	entries := make([]HasPi, numToCreate)
 	for i := 0; i < numToCreate; i++ {
-		entries[i] = fixedPi{pi: sharedPiValue}
+		entries[i] = testPi{pi: sharedPiValue}
 	}
 	return entries
 }
 
 func TestFindMatches(t *testing.T) {
 	// Generate some fixed pi values
-	piOne, err := util.GenerateRandomBytes(PI_SIZE)
-	if err != nil {
-		t.Error(err)
-	}
-	piTwo, err := util.GenerateRandomBytes(PI_SIZE)
-	if err != nil {
-		t.Error(err)
-	}
+	piOne := helper.GenerateRandomBytes(PI_SIZE, t)
+	piTwo := helper.GenerateRandomBytes(PI_SIZE, t)
 
 	tests := map[string]struct {
 		input          []HasPi
 		expectedOutput []PiMatch
 	}{
 		"zero matches": {
-			input:          []HasPi{randomPi{}, randomPi{}},
+			input:          createRandomPis(2, t),
 			expectedOutput: nil,
 		},
 		"one match of length 2": {
@@ -81,10 +74,11 @@ func TestFindMatches(t *testing.T) {
 	}
 
 	for testName, test := range tests {
-		t.Logf("Running test case: %s", testName)
-		actualOutput, err := FindMatches(test.input)
-		if assert.NoError(t, err) {
-			assert.Equal(t, test.expectedOutput, actualOutput)
-		}
+		t.Run(testName, func(t *testing.T) {
+			actualOutput, err := FindMatches(test.input)
+			if assert.NoError(t, err) {
+				assert.Equal(t, test.expectedOutput, actualOutput)
+			}
+		})
 	}
 }

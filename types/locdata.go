@@ -29,8 +29,8 @@ type LOCData struct {
 // NewLOCData constructs a valid LOCData. Returns a non-nil error if provided
 // input is invalid.
 func NewLOCData(locType LOCType, shamirShare *shamir.Share, encryptedKey encryption.GCMCiphertext) (LOCData, error) {
-	if locType == Unknown {
-		return LOCData{}, fmt.Errorf("locType cannot be Unknown")
+	if locType != Director && locType != Counselor {
+		return LOCData{}, fmt.Errorf("locType must be either Director or Counselor")
 	}
 	if shamirShare.X == nil {
 		return LOCData{}, fmt.Errorf("shamir share x value cannot be nil")
