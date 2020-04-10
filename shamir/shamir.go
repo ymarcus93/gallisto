@@ -2,16 +2,10 @@ package shamir
 
 import (
 	"crypto/sha256"
-	"errors"
 	"fmt"
 
 	"github.com/superarius/shamir"
 	ff "github.com/superarius/shamir/modular"
-)
-
-// Shamir Protocol Errors
-var (
-	ErrFailedToFindKValue = errors.New("Failed to find k value of polynomial")
 )
 
 // CallistoPrime is the prime modulus mentioned in the Callisto paper: 2^256 + 297
@@ -35,9 +29,6 @@ func FindShamirKValue(shares []*shamir.Share) (*ff.Int, error) {
 	}
 
 	yIntercept := result[0]
-	if yIntercept.AsBig() == ff.NewInt(0).AsBig() {
-		return nil, ErrFailedToFindKValue
-	}
 	return yIntercept, nil
 }
 
