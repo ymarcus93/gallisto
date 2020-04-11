@@ -38,7 +38,7 @@ func FindMatches(entries []Matchable) ([]PiMatch, error) {
 			// return zero matches as a match requires distinct users with the
 			// same pi value
 			if !existsUniqueIDs(v) {
-				return matches, nil
+				continue
 			}
 			piValue, err := hex.DecodeString(k)
 			if err != nil {
@@ -55,10 +55,10 @@ func FindMatches(entries []Matchable) ([]PiMatch, error) {
 }
 
 func existsUniqueIDs(entries []Matchable) bool {
-	seen := make(map[string]Matchable, 0)
+	seen := make(map[string]struct{}, 0)
 	for _, e := range entries {
 		userIDAsHexString := hex.EncodeToString(e.UserID())
-		seen[userIDAsHexString] = e
+		seen[userIDAsHexString] = struct{}{}
 	}
 
 	return len(seen) > 1

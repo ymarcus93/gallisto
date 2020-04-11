@@ -43,6 +43,34 @@ func createPisWithDistinctUserIDs(numToCreate int, sharedPiValue []byte, t *test
 	return entries
 }
 
+// Test for issue: https://github.com/ymarcus93/gallisto/issues/20
+func TestFindMatches_Issue20(t *testing.T) {
+	// Create two entries on the same pi value with the same userId
+	piOne := helper.GenerateRandomBytes(SIZE_BYTES, t)
+	matchablesOne := createPisWithFixedUserID(2, piOne, t)
+
+	// Create a new entry on a different pi value with a different userId
+	piTwo := helper.GenerateRandomBytes(SIZE_BYTES, t)
+	matchablesTwo := createPisWithDistinctUserIDs(1, piTwo, t)
+
+	// Create a new entry from first user on the newly created pi value
+	userIdOne := matchablesOne[0].UserID()
+	thirdMatch := testPi{pi: piTwo, userId: userIdOne}
+
+	// We should have a match on piTwo
+	expectedMatchedEntries := append(matchablesTwo, thirdMatch)
+	expectedOutput := []PiMatch{{
+		SharedPiValue:  piTwo,
+		MatchedEntries: expectedMatchedEntries,
+	}}
+
+	matches := append(matchablesOne, matchablesTwo...)
+	actualOutput, err := FindMatches(append(matches, thirdMatch))
+	if assert.NoError(t, err) {
+		assert.Equal(t, expectedOutput, actualOutput)
+	}
+}
+
 func TestFindMatches(t *testing.T) {
 	// Generate some fixed pi values
 	piOne := helper.GenerateRandomBytes(SIZE_BYTES, t)
