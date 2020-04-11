@@ -9,7 +9,7 @@ protocol](https://www.projectcallisto.org/callisto-cryptographic-approach.pdf)
 This repository contains both a library implementation of the protocol (see
 `protocol` folder), and an interactive CLI (see `cmd/gallisto` folder).
 
-# Download, verify, and run
+## Download, verify, and run
 
 The CLI is bundled as a release. Download the latest release from
 [here](https://github.com/ymarcus93/gallisto/releases)
@@ -39,7 +39,7 @@ $ cd <name-of-release>
 $ ./gallisto
 ```
 
-# CLI usage
+## CLI usage
 
 The CLI is bundled with a Callisto server (holder of OPRF key) and has the
 functionality to spawn new Callisto clients (submitters of entries).
@@ -50,7 +50,7 @@ DLOCs/LOCs are created.
 The CLI provides an interactive series of menus to execute the protocol. There
 are two main actions: (1) Submit an entry, and (2) Find matches
 
-## Submit an entry
+### Submit an entry
 
 This command walks the user through a series of questions in order to submit an
 entry to the server.
@@ -60,7 +60,7 @@ For each subsequent submission, the CLI asks if a new client should be created.
 
 If there is more than one available clients, the CLI asks the user which client to use.
 
-## Find matches
+### Find matches
 
 This command checks to see if there are any matches on submitted entries.
 
