@@ -9,6 +9,7 @@ import (
 // CallistoTuple represents the 6-tuple record sent by Callisto clients and
 // received by Callisto servers
 type CallistoTuple struct {
+	userId                            []byte
 	pi                                []byte
 	locCiphertext                     []byte                   // c
 	dlocCiphertext                    []byte                   // c_assign
@@ -20,9 +21,12 @@ type CallistoTuple struct {
 // NewCallistoTuple constructs a valid CallistoTuple. Returns a non-nil error if
 // provided input is invalid.
 func NewCallistoTuple(
-	pi, locCiphertext, dlocCiphertext []byte,
+	userId, pi, locCiphertext, dlocCiphertext []byte,
 	encryptedEntryDataKeyUnderUserKey, encryptedEntryData, encryptedAssignmentData encryption.GCMCiphertext) (CallistoTuple, error) {
 	// Validate inputs
+	if userId == nil {
+		return CallistoTuple{}, fmt.Errorf("userId cannot be nil")
+	}
 	if pi == nil {
 		return CallistoTuple{}, fmt.Errorf("pi cannot be nil")
 	}
@@ -43,6 +47,7 @@ func NewCallistoTuple(
 	}
 
 	return CallistoTuple{
+		userId:                            userId,
 		pi:                                pi,
 		locCiphertext:                     locCiphertext,
 		dlocCiphertext:                    dlocCiphertext,
@@ -53,6 +58,9 @@ func NewCallistoTuple(
 }
 
 // Getters
+
+// UserID returns the userID of this tuple's submitter
+func (c CallistoTuple) UserID() []byte { return c.userId }
 
 // Pi returns the pi value derived from P-Hat. Enables a Callisto server to find
 // perpetrator matches between clients.

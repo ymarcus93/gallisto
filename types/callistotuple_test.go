@@ -11,10 +11,20 @@ import (
 func TestNewCallistoTuple_Invalid(t *testing.T) {
 	invalidCtxs := helper.CreateInvalidGCMCiphertexts(t)
 	tests := map[string]struct {
-		pi, locCiphertext, dlocCiphertext                                              []byte
+		userId, pi, locCiphertext, dlocCiphertext                                      []byte
 		encryptedEntryDataKeyUnderUserKey, encryptedEntryData, encryptedAssignmentData encryption.GCMCiphertext
 	}{
+		"invalid userId (nil)": {
+			userId:                            nil,
+			pi:                                helper.GenerateRandomBytes(32, t),
+			locCiphertext:                     helper.GenerateRandomBytes(32, t),
+			dlocCiphertext:                    helper.GenerateRandomBytes(32, t),
+			encryptedEntryDataKeyUnderUserKey: helper.CreateGCMCiphertext(t),
+			encryptedEntryData:                helper.CreateGCMCiphertext(t),
+			encryptedAssignmentData:           helper.CreateGCMCiphertext(t),
+		},
 		"invalid pi (nil)": {
+			userId:                            helper.GenerateRandomBytes(32, t),
 			pi:                                nil,
 			locCiphertext:                     helper.GenerateRandomBytes(32, t),
 			dlocCiphertext:                    helper.GenerateRandomBytes(32, t),
@@ -23,6 +33,7 @@ func TestNewCallistoTuple_Invalid(t *testing.T) {
 			encryptedAssignmentData:           helper.CreateGCMCiphertext(t),
 		},
 		"invalid locCiphertext (nil)": {
+			userId:                            helper.GenerateRandomBytes(32, t),
 			pi:                                helper.GenerateRandomBytes(32, t),
 			locCiphertext:                     nil,
 			dlocCiphertext:                    helper.GenerateRandomBytes(32, t),
@@ -31,6 +42,7 @@ func TestNewCallistoTuple_Invalid(t *testing.T) {
 			encryptedAssignmentData:           helper.CreateGCMCiphertext(t),
 		},
 		"invalid dlocCiphertext (nil)": {
+			userId:                            helper.GenerateRandomBytes(32, t),
 			pi:                                helper.GenerateRandomBytes(32, t),
 			locCiphertext:                     helper.GenerateRandomBytes(32, t),
 			dlocCiphertext:                    nil,
@@ -39,6 +51,7 @@ func TestNewCallistoTuple_Invalid(t *testing.T) {
 			encryptedAssignmentData:           helper.CreateGCMCiphertext(t),
 		},
 		"invalid ciphertext: encryptedEntryDataKeyUnderUserKey (nil nonce)": {
+			userId:                            helper.GenerateRandomBytes(32, t),
 			pi:                                helper.GenerateRandomBytes(32, t),
 			locCiphertext:                     helper.GenerateRandomBytes(32, t),
 			dlocCiphertext:                    helper.GenerateRandomBytes(32, t),
@@ -47,6 +60,7 @@ func TestNewCallistoTuple_Invalid(t *testing.T) {
 			encryptedAssignmentData:           helper.CreateGCMCiphertext(t),
 		},
 		"invalid ciphertext: encryptedEntryDataKeyUnderUserKey (nil ciphertext)": {
+			userId:                            helper.GenerateRandomBytes(32, t),
 			pi:                                helper.GenerateRandomBytes(32, t),
 			locCiphertext:                     helper.GenerateRandomBytes(32, t),
 			dlocCiphertext:                    helper.GenerateRandomBytes(32, t),
@@ -55,6 +69,7 @@ func TestNewCallistoTuple_Invalid(t *testing.T) {
 			encryptedAssignmentData:           helper.CreateGCMCiphertext(t),
 		},
 		"invalid ciphertext: encryptedEntryDataKeyUnderUserKey (nil associated data)": {
+			userId:                            helper.GenerateRandomBytes(32, t),
 			pi:                                helper.GenerateRandomBytes(32, t),
 			locCiphertext:                     helper.GenerateRandomBytes(32, t),
 			dlocCiphertext:                    helper.GenerateRandomBytes(32, t),
@@ -63,6 +78,7 @@ func TestNewCallistoTuple_Invalid(t *testing.T) {
 			encryptedAssignmentData:           helper.CreateGCMCiphertext(t),
 		},
 		"invalid ciphertext: encryptedEntryData (nil nonce)": {
+			userId:                            helper.GenerateRandomBytes(32, t),
 			pi:                                helper.GenerateRandomBytes(32, t),
 			locCiphertext:                     helper.GenerateRandomBytes(32, t),
 			dlocCiphertext:                    helper.GenerateRandomBytes(32, t),
@@ -71,6 +87,7 @@ func TestNewCallistoTuple_Invalid(t *testing.T) {
 			encryptedAssignmentData:           helper.CreateGCMCiphertext(t),
 		},
 		"invalid ciphertext: encryptedEntryData (nil ciphertext)": {
+			userId:                            helper.GenerateRandomBytes(32, t),
 			pi:                                helper.GenerateRandomBytes(32, t),
 			locCiphertext:                     helper.GenerateRandomBytes(32, t),
 			dlocCiphertext:                    helper.GenerateRandomBytes(32, t),
@@ -79,6 +96,7 @@ func TestNewCallistoTuple_Invalid(t *testing.T) {
 			encryptedAssignmentData:           helper.CreateGCMCiphertext(t),
 		},
 		"invalid ciphertext: encryptedEntryData (nil associated data)": {
+			userId:                            helper.GenerateRandomBytes(32, t),
 			pi:                                helper.GenerateRandomBytes(32, t),
 			locCiphertext:                     helper.GenerateRandomBytes(32, t),
 			dlocCiphertext:                    helper.GenerateRandomBytes(32, t),
@@ -87,6 +105,7 @@ func TestNewCallistoTuple_Invalid(t *testing.T) {
 			encryptedAssignmentData:           helper.CreateGCMCiphertext(t),
 		},
 		"invalid ciphertext: encryptedAssignmentData (nil nonce)": {
+			userId:                            helper.GenerateRandomBytes(32, t),
 			pi:                                helper.GenerateRandomBytes(32, t),
 			locCiphertext:                     helper.GenerateRandomBytes(32, t),
 			dlocCiphertext:                    helper.GenerateRandomBytes(32, t),
@@ -95,6 +114,7 @@ func TestNewCallistoTuple_Invalid(t *testing.T) {
 			encryptedAssignmentData:           invalidCtxs[0],
 		},
 		"invalid ciphertext: encryptedAssignmentData (nil ciphertext)": {
+			userId:                            helper.GenerateRandomBytes(32, t),
 			pi:                                helper.GenerateRandomBytes(32, t),
 			locCiphertext:                     helper.GenerateRandomBytes(32, t),
 			dlocCiphertext:                    helper.GenerateRandomBytes(32, t),
@@ -103,6 +123,7 @@ func TestNewCallistoTuple_Invalid(t *testing.T) {
 			encryptedAssignmentData:           invalidCtxs[1],
 		},
 		"invalid ciphertext: encryptedAssignmentData (nil associated data)": {
+			userId:                            helper.GenerateRandomBytes(32, t),
 			pi:                                helper.GenerateRandomBytes(32, t),
 			locCiphertext:                     helper.GenerateRandomBytes(32, t),
 			dlocCiphertext:                    helper.GenerateRandomBytes(32, t),
@@ -115,6 +136,7 @@ func TestNewCallistoTuple_Invalid(t *testing.T) {
 	for testName, test := range tests {
 		t.Run(testName, func(t *testing.T) {
 			_, err := NewCallistoTuple(
+				test.userId,
 				test.pi,
 				test.locCiphertext,
 				test.dlocCiphertext,
@@ -127,14 +149,16 @@ func TestNewCallistoTuple_Invalid(t *testing.T) {
 }
 
 func TestNewCallistoTuple_Valid(t *testing.T) {
+	userId := helper.GenerateRandomBytes(32, t)
 	pi := helper.GenerateRandomBytes(32, t)
 	locCiphertext := helper.GenerateRandomBytes(32, t)
 	dlocCiphertext := helper.GenerateRandomBytes(32, t)
 	encryptedEntryDataKeyUnderUserKey := helper.CreateGCMCiphertext(t)
 	encryptedEntryData := helper.CreateGCMCiphertext(t)
 	encryptedAssignmentData := helper.CreateGCMCiphertext(t)
-	actual, err := NewCallistoTuple(pi, locCiphertext, dlocCiphertext, encryptedEntryDataKeyUnderUserKey, encryptedEntryData, encryptedAssignmentData)
+	actual, err := NewCallistoTuple(userId, pi, locCiphertext, dlocCiphertext, encryptedEntryDataKeyUnderUserKey, encryptedEntryData, encryptedAssignmentData)
 	if assert.NoError(t, err) {
+		assert.Equal(t, userId, actual.userId)
 		assert.Equal(t, pi, actual.pi)
 		assert.Equal(t, locCiphertext, actual.locCiphertext)
 		assert.Equal(t, dlocCiphertext, actual.dlocCiphertext)

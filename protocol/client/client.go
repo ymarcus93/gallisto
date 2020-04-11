@@ -109,6 +109,7 @@ func (c *CallistoClient) CreateCallistoTuple(perpID []byte, entry CallistoEntry,
 	)
 
 	tuple, err := types.NewCallistoTuple(
+		c.UserID,
 		akpiValues.pi,
 		locCiphertext,
 		dlocCiphertext,
