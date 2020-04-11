@@ -3,6 +3,7 @@ module github.com/ymarcus93/gallisto
 go 1.14
 
 require (
+	github.com/AlecAivazis/survey/v2 v2.0.7
 	github.com/alxdavids/voprf-poc/go v0.0.0-20200327170552-d7e2c578b2b5
 	github.com/golang/protobuf v1.3.5 // indirect
 	github.com/google/uuid v1.1.1
