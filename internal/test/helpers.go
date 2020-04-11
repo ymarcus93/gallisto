@@ -3,7 +3,6 @@ package test
 import (
 	"testing"
 
-	"github.com/superarius/shamir"
 	"github.com/superarius/shamir/modular"
 	"github.com/ymarcus93/gallisto/internal/encryption"
 	"github.com/ymarcus93/gallisto/internal/util"
@@ -46,10 +45,4 @@ func GenerateRandomModularInt(t *testing.T) *modular.Int {
 		t.Fatalf("failed to generate random modular int: %v", err)
 	}
 	return rand
-}
-
-func CreateShamirShare(t *testing.T) *shamir.Share {
-	x := GenerateRandomModularInt(t)
-	y := GenerateRandomModularInt(t)
-	return &shamir.Share{X: x, Y: y}
 }

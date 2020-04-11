@@ -9,10 +9,8 @@ import (
 	"github.com/ymarcus93/gallisto/internal/encoding"
 	"github.com/ymarcus93/gallisto/internal/encryption"
 	"github.com/ymarcus93/gallisto/internal/shamir"
-	"github.com/ymarcus93/gallisto/types"
 	"github.com/ymarcus93/gallisto/internal/util"
-
-	ss "github.com/superarius/shamir"
+	"github.com/ymarcus93/gallisto/types"
 
 	"github.com/google/uuid"
 	"golang.org/x/crypto/hkdf"
@@ -226,7 +224,7 @@ func encryptAssignmentData(data types.AssignmentData, pi []byte) (encryption.GCM
 
 // encryptLOCData forms the c or c_assign tuple (depending on locType) and
 // encrypts the necessary data for a LOC
-func encryptLOCData(locType types.LOCType, shamirShare *ss.Share, encryptedKey encryption.GCMCiphertext, locPublicKey *rsa.PublicKey) ([]byte, error) {
+func encryptLOCData(locType types.LOCType, shamirShare *shamir.ShamirShare, encryptedKey encryption.GCMCiphertext, locPublicKey *rsa.PublicKey) ([]byte, error) {
 	locData, err := types.NewLOCData(locType, shamirShare, encryptedKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to construct loc data: %v", err)

@@ -4,8 +4,6 @@ import (
 	"crypto/rsa"
 	"fmt"
 
-	ss "github.com/superarius/shamir"
-
 	"github.com/vmihailenco/msgpack"
 
 	"github.com/ymarcus93/gallisto/internal/encoding"
@@ -33,7 +31,7 @@ func decryptDLOCCiphertextsAndValidate(dlocCiphertexts [][]byte, dlocPrivateKey 
 // this by finding a common k value amongst matched dlocData and attempting to
 // decrypt encrypted assignment keys with this k. It then uses the decrypted
 // assignment keys to decrypt all assignment data.
-func DecryptAssignmentData(dlocCiphertextsToFindKFrom [][]byte, dlocCiphertexts [][]byte, encryptedAssignmentData []encryption.GCMCiphertext, dlocPrivateKey *rsa.PrivateKey) ([]types.AssignmentData, error) {
+func DecryptAssignmentData(dlocCiphertexts [][]byte, encryptedAssignmentData []encryption.GCMCiphertext, dlocPrivateKey *rsa.PrivateKey) ([]types.AssignmentData, error) {
 	if len(dlocCiphertexts) != len(encryptedAssignmentData) {
 		return nil, fmt.Errorf("mismatch length between dlocCiphertexts and encrypted assignment data")
 	}
@@ -43,13 +41,8 @@ func DecryptAssignmentData(dlocCiphertextsToFindKFrom [][]byte, dlocCiphertexts 
 		return nil, fmt.Errorf("failed to decrypt dlocCiphertexts: %v", err)
 	}
 
-	dlocDataToFindKFrom, err := decryptDLOCCiphertextsAndValidate(dlocCiphertextsToFindKFrom, dlocPrivateKey)
-	if err != nil {
-		return nil, fmt.Errorf("failed to decrypt dlocCiphertextsToFindKFrom: %v", err)
-	}
-
 	// Find k
-	kAsBytes, err := findKValueFromLOCData(dlocDataToFindKFrom)
+	kAsBytes, err := findKValueFromLOCData(dlocDataToDecrypt)
 	if err != nil {
 		return nil, fmt.Errorf("failed to find k value from DLOC ciphertexts: %v", err)
 	}
@@ -90,7 +83,7 @@ func decryptLOCCiphertextsAndValidate(locCiphertexts [][]byte, locPrivateKey *rs
 // finding a common k value amongst matched locData and attempting to decrypt
 // encrypted entry keys with this k. It then uses the decrypted entry keys to
 // decrypt all entry data.
-func DecryptEntryData(locCiphertextsToFindKFrom [][]byte, locCiphertexts [][]byte, encryptedEntryData []encryption.GCMCiphertext, locPrivateKey *rsa.PrivateKey) ([]types.EntryData, error) {
+func DecryptEntryData(locCiphertexts [][]byte, encryptedEntryData []encryption.GCMCiphertext, locPrivateKey *rsa.PrivateKey) ([]types.EntryData, error) {
 	if len(locCiphertexts) != len(encryptedEntryData) {
 		return nil, fmt.Errorf("mismatch length between locCiphertexts and encrypted entry data")
 	}
@@ -100,13 +93,8 @@ func DecryptEntryData(locCiphertextsToFindKFrom [][]byte, locCiphertexts [][]byt
 		return nil, fmt.Errorf("failed to decrypt locCiphertexts: %v", err)
 	}
 
-	locDataToFindKFrom, err := decryptLOCCiphertextsAndValidate(locCiphertextsToFindKFrom, locPrivateKey)
-	if err != nil {
-		return nil, fmt.Errorf("failed to decrypt locCiphertextsToFindKFrom: %v", err)
-	}
-
 	// Find k
-	kAsBytes, err := findKValueFromLOCData(locDataToFindKFrom)
+	kAsBytes, err := findKValueFromLOCData(locDataToDecrypt)
 	if err != nil {
 		return nil, fmt.Errorf("failed to find k value from LOC ciphertexts: %v", err)
 	}
@@ -153,7 +141,7 @@ func decryptLOCCiphertexts(locCiphertexts [][]byte, privateKey *rsa.PrivateKey) 
 
 func findKValueFromLOCData(locData []types.LOCData) ([]byte, error) {
 	// Form shamir (x,y) shares
-	shares := make([]*ss.Share, len(locData))
+	shares := make([]*shamir.ShamirShare, len(locData))
 	for i, d := range locData {
 		shares[i] = d.GetShamirShare()
 	}

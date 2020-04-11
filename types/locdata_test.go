@@ -5,53 +5,59 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/superarius/shamir"
 	ff "github.com/superarius/shamir/modular"
 
 	"github.com/ymarcus93/gallisto/internal/encryption"
+	"github.com/ymarcus93/gallisto/internal/shamir"
 	helper "github.com/ymarcus93/gallisto/internal/test"
 )
+
+func createShamirShare(t *testing.T) *shamir.ShamirShare {
+	x := helper.GenerateRandomModularInt(t)
+	y := helper.GenerateRandomModularInt(t)
+	return &shamir.ShamirShare{X: x, Y: y}
+}
 
 func TestNewLOCData_Invalid(t *testing.T) {
 	invalidCtxs := helper.CreateInvalidGCMCiphertexts(t)
 	tests := map[string]struct {
 		locType      LOCType
-		shamirShare  *shamir.Share
+		shamirShare  *shamir.ShamirShare
 		encryptedKey encryption.GCMCiphertext
 	}{
 		"invalid locType (default)": {
 			locType:      0,
-			shamirShare:  helper.CreateShamirShare(t),
+			shamirShare:  createShamirShare(t),
 			encryptedKey: helper.CreateGCMCiphertext(t),
 		},
 		"invalid locType (out of bounds)": {
 			locType:      3,
-			shamirShare:  helper.CreateShamirShare(t),
+			shamirShare:  createShamirShare(t),
 			encryptedKey: helper.CreateGCMCiphertext(t),
 		},
 		"invalid x point on shamir share": {
 			locType:      Director,
-			shamirShare:  &shamir.Share{X: nil, Y: helper.GenerateRandomModularInt(t)},
+			shamirShare:  &shamir.ShamirShare{X: nil, Y: helper.GenerateRandomModularInt(t)},
 			encryptedKey: helper.CreateGCMCiphertext(t),
 		},
 		"invalid y point on shamir share": {
 			locType:      Director,
-			shamirShare:  &shamir.Share{X: helper.GenerateRandomModularInt(t), Y: nil},
+			shamirShare:  &shamir.ShamirShare{X: helper.GenerateRandomModularInt(t), Y: nil},
 			encryptedKey: helper.CreateGCMCiphertext(t),
 		},
 		"invalid ciphertext (nil nonce)": {
 			locType:      Director,
-			shamirShare:  helper.CreateShamirShare(t),
+			shamirShare:  createShamirShare(t),
 			encryptedKey: invalidCtxs[0],
 		},
 		"invalid ciphertext (nil ciphertext)": {
 			locType:      Director,
-			shamirShare:  helper.CreateShamirShare(t),
+			shamirShare:  createShamirShare(t),
 			encryptedKey: invalidCtxs[1],
 		},
 		"invalid ciphertext (nil associated data)": {
 			locType:      Director,
-			shamirShare:  helper.CreateShamirShare(t),
+			shamirShare:  createShamirShare(t),
 			encryptedKey: invalidCtxs[2],
 		},
 	}
@@ -67,17 +73,17 @@ func TestNewLOCData_Invalid(t *testing.T) {
 func TestNewLOCData_Valid(t *testing.T) {
 	tests := map[string]struct {
 		locType      LOCType
-		shamirShare  *shamir.Share
+		shamirShare  *shamir.ShamirShare
 		encryptedKey encryption.GCMCiphertext
 	}{
 		"valid director input": {
 			locType:      Director,
-			shamirShare:  helper.CreateShamirShare(t),
+			shamirShare:  createShamirShare(t),
 			encryptedKey: helper.CreateGCMCiphertext(t),
 		},
 		"valid counselor input": {
 			locType:      Counselor,
-			shamirShare:  helper.CreateShamirShare(t),
+			shamirShare:  createShamirShare(t),
 			encryptedKey: helper.CreateGCMCiphertext(t),
 		},
 	}
@@ -96,18 +102,18 @@ func TestNewLOCData_Valid(t *testing.T) {
 }
 
 func TestGetShamirShare(t *testing.T) {
-	shamirShare := helper.CreateShamirShare(t)
+	shamirShare := createShamirShare(t)
 	locData, err := NewLOCData(Director, shamirShare, helper.CreateGCMCiphertext(t))
 	if err != nil {
 		t.Error(err)
 	}
 	actual := locData.GetShamirShare()
-	expected := &shamir.Share{X: ff.IntFromBytes(shamirShare.X.Bytes()), Y: ff.IntFromBytes(shamirShare.Y.Bytes())}
+	expected := &shamir.ShamirShare{X: ff.IntFromBytes(shamirShare.X.Bytes()), Y: ff.IntFromBytes(shamirShare.Y.Bytes())}
 	assert.Equal(t, expected, actual)
 }
 
 func TestMessagePackEncoding(t *testing.T) {
-	locData, err := NewLOCData(Director, helper.CreateShamirShare(t), helper.CreateGCMCiphertext(t))
+	locData, err := NewLOCData(Director, createShamirShare(t), helper.CreateGCMCiphertext(t))
 	if err != nil {
 		t.Error(err)
 	}

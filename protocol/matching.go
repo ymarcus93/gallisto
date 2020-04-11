@@ -6,9 +6,8 @@ import (
 )
 
 type PiMatch struct {
-	SharedPiValue                     []byte
-	MatchedEntries                    []Matchable
-	MatchedEntriesWithDistinctUserIDs []Matchable
+	SharedPiValue  []byte
+	MatchedEntries []Matchable
 }
 
 type Matchable interface {
@@ -38,8 +37,7 @@ func FindMatches(entries []Matchable) ([]PiMatch, error) {
 			// If there are only common pi values under the same user, then we
 			// return zero matches as a match requires distinct users with the
 			// same pi value
-			withDistinctIDs := buildMatchedEntriesWithDistinctUserIDs(v)
-			if len(withDistinctIDs) <= 1 {
+			if !existsUniqueIDs(v) {
 				return matches, nil
 			}
 			piValue, err := hex.DecodeString(k)
@@ -47,9 +45,8 @@ func FindMatches(entries []Matchable) ([]PiMatch, error) {
 				return nil, fmt.Errorf("failed to decode %v: %v", k, err)
 			}
 			match := PiMatch{
-				SharedPiValue:                     piValue,
-				MatchedEntries:                    v,
-				MatchedEntriesWithDistinctUserIDs: withDistinctIDs,
+				SharedPiValue:  piValue,
+				MatchedEntries: v,
 			}
 			matches = append(matches, match)
 		}
@@ -57,17 +54,12 @@ func FindMatches(entries []Matchable) ([]PiMatch, error) {
 	return matches, nil
 }
 
-func buildMatchedEntriesWithDistinctUserIDs(entries []Matchable) []Matchable {
-	matchedEntriesWithDistinctUserIDs := make([]Matchable, 0)
+func existsUniqueIDs(entries []Matchable) bool {
 	seen := make(map[string]Matchable, 0)
 	for _, e := range entries {
 		userIDAsHexString := hex.EncodeToString(e.UserID())
 		seen[userIDAsHexString] = e
 	}
 
-	for _, e := range seen {
-		matchedEntriesWithDistinctUserIDs = append(matchedEntriesWithDistinctUserIDs, e)
-	}
-
-	return matchedEntriesWithDistinctUserIDs
+	return len(seen) > 1
 }

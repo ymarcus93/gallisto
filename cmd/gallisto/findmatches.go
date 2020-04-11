@@ -41,7 +41,7 @@ func findMatches() error {
 
 	for _, m := range matchedTuples {
 		fmt.Printf("\ndecrypted data for pi: %v\n", m.piValue)
-		err = decryptTuples(m.callistoTuplesSelected, m.callistoTuplesSelectedOnlyDistinctID)
+		err = decryptTuples(m.callistoTuplesSelected)
 		if err != nil {
 			return err
 		}
@@ -62,9 +62,8 @@ func convertMatchPiValuesToHex(matches []protocol.PiMatch) ([]string, map[string
 }
 
 type selectedMatch struct {
-	piValue                              string
-	callistoTuplesSelected               []types.CallistoTuple
-	callistoTuplesSelectedOnlyDistinctID []types.CallistoTuple
+	piValue                string
+	callistoTuplesSelected []types.CallistoTuple
 }
 
 func matchSelector(matches []protocol.PiMatch) ([]selectedMatch, error) {
@@ -90,30 +89,22 @@ func matchSelector(matches []protocol.PiMatch) ([]selectedMatch, error) {
 
 	for i, match := range parsedSelectedMatches {
 		callistoTuplesSelected := make([]types.CallistoTuple, 0)
-		callistoTuplesSelectedOnlyDistinctIDs := make([]types.CallistoTuple, 0)
 		for _, entry := range match.MatchedEntries {
 			callistoTuple := (entry).(types.CallistoTuple)
 			callistoTuplesSelected = append(callistoTuplesSelected, callistoTuple)
 		}
-		for _, entry := range match.MatchedEntriesWithDistinctUserIDs {
-			callistoTuple := (entry).(types.CallistoTuple)
-			callistoTuplesSelectedOnlyDistinctIDs = append(callistoTuplesSelectedOnlyDistinctIDs, callistoTuple)
-		}
 		constructed := selectedMatch{
-			callistoTuplesSelected:               callistoTuplesSelected,
-			callistoTuplesSelectedOnlyDistinctID: callistoTuplesSelectedOnlyDistinctIDs,
-			piValue:                              hex.EncodeToString(match.SharedPiValue),
+			callistoTuplesSelected: callistoTuplesSelected,
+			piValue:                hex.EncodeToString(match.SharedPiValue),
 		}
 		allSelectedMatches[i] = constructed
 	}
 	return allSelectedMatches, nil
 }
 
-func decryptTuples(tuples []types.CallistoTuple, tuplesToFindKFrom []types.CallistoTuple) error {
+func decryptTuples(tuples []types.CallistoTuple) error {
 	dlocCiphertexts := make([][]byte, len(tuples))
 	locCiphertexts := make([][]byte, len(tuples))
-	dlocCiphertextsToFindKFrom := make([][]byte, len(tuplesToFindKFrom))
-	locCiphertextsToFindKFrom := make([][]byte, len(tuplesToFindKFrom))
 	encryptedAssignmentData := make([]encryption.GCMCiphertext, len(tuples))
 	encryptedEntryData := make([]encryption.GCMCiphertext, len(tuples))
 
@@ -124,12 +115,7 @@ func decryptTuples(tuples []types.CallistoTuple, tuplesToFindKFrom []types.Calli
 		encryptedEntryData[i] = tuple.EncryptedEntryData()
 	}
 
-	for i, tuple := range tuplesToFindKFrom {
-		dlocCiphertextsToFindKFrom[i] = tuple.DLOCCiphertext()
-		locCiphertextsToFindKFrom[i] = tuple.LOCCiphertext()
-	}
-
-	assignmentResults, err := protocol.DecryptAssignmentData(dlocCiphertextsToFindKFrom, dlocCiphertexts, encryptedAssignmentData, pubkeys.dlocKeys.PrivateKey)
+	assignmentResults, err := protocol.DecryptAssignmentData(dlocCiphertexts, encryptedAssignmentData, pubkeys.dlocKeys.PrivateKey)
 	if err != nil {
 		return err
 	}
@@ -139,7 +125,7 @@ func decryptTuples(tuples []types.CallistoTuple, tuplesToFindKFrom []types.Calli
 		fmt.Println(prettyPrint(d))
 	}
 
-	entryResults, err := protocol.DecryptEntryData(locCiphertextsToFindKFrom, locCiphertexts, encryptedEntryData, pubkeys.locKeys.PrivateKey)
+	entryResults, err := protocol.DecryptEntryData(locCiphertexts, encryptedEntryData, pubkeys.locKeys.PrivateKey)
 	if err != nil {
 		panic(err)
 	}

@@ -4,8 +4,8 @@ import (
 	"fmt"
 
 	"github.com/ymarcus93/gallisto/internal/encryption"
+	"github.com/ymarcus93/gallisto/internal/shamir"
 
-	"github.com/superarius/shamir"
 	ff "github.com/superarius/shamir/modular"
 )
 
@@ -28,7 +28,7 @@ type LOCData struct {
 
 // NewLOCData constructs a valid LOCData. Returns a non-nil error if provided
 // input is invalid.
-func NewLOCData(locType LOCType, shamirShare *shamir.Share, encryptedKey encryption.GCMCiphertext) (LOCData, error) {
+func NewLOCData(locType LOCType, shamirShare *shamir.ShamirShare, encryptedKey encryption.GCMCiphertext) (LOCData, error) {
 	if locType != Director && locType != Counselor {
 		return LOCData{}, fmt.Errorf("locType must be either Director or Counselor")
 	}
@@ -80,12 +80,12 @@ func (d LOCData) LocType() LOCType { return d.locType }
 func (d LOCData) EncryptedKey() encryption.GCMCiphertext { return d.encryptedKey }
 
 // GetShamirShare returns the (U, s) shamir share contained within LOCData
-func (d LOCData) GetShamirShare() *shamir.Share {
+func (d LOCData) GetShamirShare() *shamir.ShamirShare {
 	return getShamirShare(d.u, d.s)
 }
 
-func getShamirShare(x, y []byte) *shamir.Share {
-	return &shamir.Share{
+func getShamirShare(x, y []byte) *shamir.ShamirShare {
+	return &shamir.ShamirShare{
 		X: ff.IntFromBytes(x),
 		Y: ff.IntFromBytes(y),
 	}
