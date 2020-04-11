@@ -6,18 +6,21 @@ import (
 )
 
 type PiMatch struct {
-	SharedPiValue  []byte
-	MatchedEntries []HasPi
+	SharedPiValue                     []byte
+	MatchedEntries                    []Matchable
+	MatchedEntriesWithDistinctUserIDs []Matchable
 }
 
-type HasPi interface {
+type Matchable interface {
 	Pi() []byte
+	UserID() []byte
 }
 
 // FindMatches returns a list of Pi matches. A match is defined as >= 2 entries
-// sharing the same pi value. The returned list is nil if no matches were found.
-func FindMatches(entries []HasPi) ([]PiMatch, error) {
-	piMap := make(map[string][]HasPi)
+// sharing the same pi value, but different user IDs. The returned list is nil
+// if no matches were found.
+func FindMatches(entries []Matchable) ([]PiMatch, error) {
+	piMap := make(map[string][]Matchable)
 
 	// Scan through entries and create pi-->list(entries) mapping of entries
 	// with common pi value
@@ -32,16 +35,39 @@ func FindMatches(entries []HasPi) ([]PiMatch, error) {
 	var matches []PiMatch
 	for k, v := range piMap {
 		if len(v) >= 2 {
+			// If there are only common pi values under the same user, then we
+			// return zero matches as a match requires distinct users with the
+			// same pi value
+			withDistinctIDs := buildMatchedEntriesWithDistinctUserIDs(v)
+			if len(withDistinctIDs) <= 1 {
+				return matches, nil
+			}
 			piValue, err := hex.DecodeString(k)
 			if err != nil {
 				return nil, fmt.Errorf("failed to decode %v: %v", k, err)
 			}
 			match := PiMatch{
-				SharedPiValue:  piValue,
-				MatchedEntries: v,
+				SharedPiValue:                     piValue,
+				MatchedEntries:                    v,
+				MatchedEntriesWithDistinctUserIDs: withDistinctIDs,
 			}
 			matches = append(matches, match)
 		}
 	}
 	return matches, nil
+}
+
+func buildMatchedEntriesWithDistinctUserIDs(entries []Matchable) []Matchable {
+	matchedEntriesWithDistinctUserIDs := make([]Matchable, 0)
+	seen := make(map[string]Matchable, 0)
+	for _, e := range entries {
+		userIDAsHexString := hex.EncodeToString(e.UserID())
+		seen[userIDAsHexString] = e
+	}
+
+	for _, e := range seen {
+		matchedEntriesWithDistinctUserIDs = append(matchedEntriesWithDistinctUserIDs, e)
+	}
+
+	return matchedEntriesWithDistinctUserIDs
 }
