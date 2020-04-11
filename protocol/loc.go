@@ -14,15 +14,7 @@ import (
 	"github.com/ymarcus93/gallisto/types"
 )
 
-// DecryptAssignmentData decrypts a list of encrypted assignment data. It does
-// this by finding a common k value amongst matched dlocData and attempting to
-// decrypt encrypted assignment keys with this k. It then uses the decrypted
-// assignment keys to decrypt all assignment data.
-func DecryptAssignmentData(dlocCiphertexts [][]byte, encryptedAssignmentData []encryption.GCMCiphertext, dlocPrivateKey *rsa.PrivateKey) ([]types.AssignmentData, error) {
-	if len(dlocCiphertexts) != len(encryptedAssignmentData) {
-		return nil, fmt.Errorf("mismatch length between dlocCiphertexts and encrypted assignment data")
-	}
-
+func decryptDLOCCiphertextsAndValidate(dlocCiphertexts [][]byte, dlocPrivateKey *rsa.PrivateKey) ([]types.LOCData, error) {
 	// Decrypt dloc ciphertexts
 	dlocData, err := decryptLOCCiphertexts(dlocCiphertexts, dlocPrivateKey)
 	if err != nil {
@@ -34,15 +26,37 @@ func DecryptAssignmentData(dlocCiphertexts [][]byte, encryptedAssignmentData []e
 		return nil, fmt.Errorf("decrypted DLOC ciphertexts but found non-Director data")
 	}
 
+	return dlocData, nil
+}
+
+// DecryptAssignmentData decrypts a list of encrypted assignment data. It does
+// this by finding a common k value amongst matched dlocData and attempting to
+// decrypt encrypted assignment keys with this k. It then uses the decrypted
+// assignment keys to decrypt all assignment data.
+func DecryptAssignmentData(dlocCiphertextsToFindKFrom [][]byte, dlocCiphertexts [][]byte, encryptedAssignmentData []encryption.GCMCiphertext, dlocPrivateKey *rsa.PrivateKey) ([]types.AssignmentData, error) {
+	if len(dlocCiphertexts) != len(encryptedAssignmentData) {
+		return nil, fmt.Errorf("mismatch length between dlocCiphertexts and encrypted assignment data")
+	}
+
+	dlocDataToDecrypt, err := decryptDLOCCiphertextsAndValidate(dlocCiphertexts, dlocPrivateKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decrypt dlocCiphertexts: %v", err)
+	}
+
+	dlocDataToFindKFrom, err := decryptDLOCCiphertextsAndValidate(dlocCiphertextsToFindKFrom, dlocPrivateKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decrypt dlocCiphertextsToFindKFrom: %v", err)
+	}
+
 	// Find k
-	kAsBytes, err := findKValueFromLOCData(dlocData)
+	kAsBytes, err := findKValueFromLOCData(dlocDataToFindKFrom)
 	if err != nil {
 		return nil, fmt.Errorf("failed to find k value from DLOC ciphertexts: %v", err)
 	}
 
 	// Decrypt assignment data
-	assignmentDatas := make([]types.AssignmentData, len(dlocData))
-	for i, d := range dlocData {
+	assignmentDatas := make([]types.AssignmentData, len(dlocDataToDecrypt))
+	for i, d := range dlocDataToDecrypt {
 		k_a, err := encryption.DecryptAES(kAsBytes, d.EncryptedKey())
 		if err != nil {
 			return nil, fmt.Errorf("failed to decrypt EncryptedAssignmentDataKey at index %v: %v", i, err)
@@ -57,15 +71,7 @@ func DecryptAssignmentData(dlocCiphertexts [][]byte, encryptedAssignmentData []e
 	return assignmentDatas, nil
 }
 
-// DecryptEntryData decrypts a list of encrypted entry data. It does this by
-// finding a common k value amongst matched locData and attempting to decrypt
-// encrypted entry keys with this k. It then uses the decrypted entry keys to
-// decrypt all entry data.
-func DecryptEntryData(locCiphertexts [][]byte, encryptedEntryData []encryption.GCMCiphertext, locPrivateKey *rsa.PrivateKey) ([]types.EntryData, error) {
-	if len(locCiphertexts) != len(encryptedEntryData) {
-		return nil, fmt.Errorf("mismatch length between locCiphertexts and encrypted entry data")
-	}
-
+func decryptLOCCiphertextsAndValidate(locCiphertexts [][]byte, locPrivateKey *rsa.PrivateKey) ([]types.LOCData, error) {
 	// Decrypt loc ciphertexts
 	locData, err := decryptLOCCiphertexts(locCiphertexts, locPrivateKey)
 	if err != nil {
@@ -77,15 +83,37 @@ func DecryptEntryData(locCiphertexts [][]byte, encryptedEntryData []encryption.G
 		return nil, fmt.Errorf("decrypted LOC ciphertexts but found non-Counselor data")
 	}
 
+	return locData, nil
+}
+
+// DecryptEntryData decrypts a list of encrypted entry data. It does this by
+// finding a common k value amongst matched locData and attempting to decrypt
+// encrypted entry keys with this k. It then uses the decrypted entry keys to
+// decrypt all entry data.
+func DecryptEntryData(locCiphertextsToFindKFrom [][]byte, locCiphertexts [][]byte, encryptedEntryData []encryption.GCMCiphertext, locPrivateKey *rsa.PrivateKey) ([]types.EntryData, error) {
+	if len(locCiphertexts) != len(encryptedEntryData) {
+		return nil, fmt.Errorf("mismatch length between locCiphertexts and encrypted entry data")
+	}
+
+	locDataToDecrypt, err := decryptLOCCiphertextsAndValidate(locCiphertexts, locPrivateKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decrypt locCiphertexts: %v", err)
+	}
+
+	locDataToFindKFrom, err := decryptLOCCiphertextsAndValidate(locCiphertextsToFindKFrom, locPrivateKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decrypt locCiphertextsToFindKFrom: %v", err)
+	}
+
 	// Find k
-	kAsBytes, err := findKValueFromLOCData(locData)
+	kAsBytes, err := findKValueFromLOCData(locDataToFindKFrom)
 	if err != nil {
 		return nil, fmt.Errorf("failed to find k value from LOC ciphertexts: %v", err)
 	}
 
 	// Decrypt entry data
-	entryDatas := make([]types.EntryData, len(locData))
-	for i, d := range locData {
+	entryDatas := make([]types.EntryData, len(locDataToDecrypt))
+	for i, d := range locDataToDecrypt {
 		k_e, err := encryption.DecryptAES(kAsBytes, d.EncryptedKey())
 		if err != nil {
 			return nil, fmt.Errorf("failed to decrypt EncryptedEntryDataKey at index %v: %v", i, err)
