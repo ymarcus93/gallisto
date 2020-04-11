@@ -8,8 +8,8 @@ import (
 	"github.com/superarius/shamir"
 	ff "github.com/superarius/shamir/modular"
 
-	"github.com/ymarcus93/gallisto/encryption"
-	helper "github.com/ymarcus93/gallisto/test"
+	"github.com/ymarcus93/gallisto/internal/encryption"
+	helper "github.com/ymarcus93/gallisto/internal/test"
 )
 
 func TestNewLOCData_Invalid(t *testing.T) {

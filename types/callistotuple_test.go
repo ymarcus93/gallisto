@@ -4,8 +4,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/ymarcus93/gallisto/encryption"
-	helper "github.com/ymarcus93/gallisto/test"
+	"github.com/ymarcus93/gallisto/internal/encryption"
+	helper "github.com/ymarcus93/gallisto/internal/test"
 )
 
 func TestNewCallistoTuple_Invalid(t *testing.T) {

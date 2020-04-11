@@ -6,11 +6,11 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/ymarcus93/gallisto/encoding"
-	"github.com/ymarcus93/gallisto/encryption"
-	"github.com/ymarcus93/gallisto/shamir"
+	"github.com/ymarcus93/gallisto/internal/encoding"
+	"github.com/ymarcus93/gallisto/internal/encryption"
+	"github.com/ymarcus93/gallisto/internal/shamir"
 	"github.com/ymarcus93/gallisto/types"
-	"github.com/ymarcus93/gallisto/util"
+	"github.com/ymarcus93/gallisto/internal/util"
 
 	ss "github.com/superarius/shamir"
 

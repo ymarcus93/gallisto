@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/AlecAivazis/survey/v2"
-	"github.com/ymarcus93/gallisto/encryption"
+	"github.com/ymarcus93/gallisto/internal/encryption"
 	"github.com/ymarcus93/gallisto/protocol"
 	"github.com/ymarcus93/gallisto/types"
 )

@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	helper "github.com/ymarcus93/gallisto/test"
+	helper "github.com/ymarcus93/gallisto/internal/test"
 )
 
 const SIZE_BYTES = 32

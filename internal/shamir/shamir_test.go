@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/superarius/shamir"
 	"github.com/superarius/shamir/modular"
-	helper "github.com/ymarcus93/gallisto/test"
+	helper "github.com/ymarcus93/gallisto/internal/test"
 )
 
 func computeShamirShares(aValue, kValue []byte, numToCreate int, t *testing.T) []*shamir.Share {

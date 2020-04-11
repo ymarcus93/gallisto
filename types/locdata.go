@@ -3,7 +3,7 @@ package types
 import (
 	"fmt"
 
-	"github.com/ymarcus93/gallisto/encryption"
+	"github.com/ymarcus93/gallisto/internal/encryption"
 
 	"github.com/superarius/shamir"
 	ff "github.com/superarius/shamir/modular"

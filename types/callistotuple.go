@@ -3,7 +3,7 @@ package types
 import (
 	"fmt"
 
-	"github.com/ymarcus93/gallisto/encryption"
+	"github.com/ymarcus93/gallisto/internal/encryption"
 )
 
 // CallistoTuple represents the 6-tuple record sent by Callisto clients and

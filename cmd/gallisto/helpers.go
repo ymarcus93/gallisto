@@ -6,8 +6,8 @@ import (
 	"os"
 
 	"github.com/AlecAivazis/survey/v2/terminal"
-	"github.com/ymarcus93/gallisto/encryption"
-	"github.com/ymarcus93/gallisto/oprf"
+	"github.com/ymarcus93/gallisto/internal/encryption"
+	"github.com/ymarcus93/gallisto/internal/oprf"
 	"github.com/ymarcus93/gallisto/protocol/client"
 	"github.com/ymarcus93/gallisto/types"
 )

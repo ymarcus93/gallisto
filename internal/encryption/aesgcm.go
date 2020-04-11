@@ -5,7 +5,7 @@ import (
 	"crypto/cipher"
 	"fmt"
 
-	"github.com/ymarcus93/gallisto/util"
+	"github.com/ymarcus93/gallisto/internal/util"
 )
 
 // GCMCiphertext holds the three components of an AES-GCM ciphertext

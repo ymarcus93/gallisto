@@ -5,8 +5,8 @@ import (
 
 	"github.com/superarius/shamir"
 	"github.com/superarius/shamir/modular"
-	"github.com/ymarcus93/gallisto/encryption"
-	"github.com/ymarcus93/gallisto/util"
+	"github.com/ymarcus93/gallisto/internal/encryption"
+	"github.com/ymarcus93/gallisto/internal/util"
 )
 
 func GenerateRandomBytes(num int, t *testing.T) []byte {
