@@ -90,10 +90,7 @@ func TestFindMatches(t *testing.T) {
 		t.Run(testName, func(t *testing.T) {
 			actualOutput, err := FindMatches(test.input)
 			if assert.NoError(t, err) {
-				for i, o := range actualOutput {
-					assert.Equal(t, test.expectedOutput[i].SharedPiValue, o.SharedPiValue)
-					assert.ElementsMatch(t, test.expectedOutput[i].MatchedEntries, o.MatchedEntries)
-				}
+				assert.ElementsMatch(t, test.expectedOutput, actualOutput)
 			}
 		})
 	}
